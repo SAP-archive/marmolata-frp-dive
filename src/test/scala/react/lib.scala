@@ -50,7 +50,7 @@ trait ReactLibraryTests {
       l1 shouldEqual List(5, 10)
     }
 
-    it should "only update the value once in a triangle" in {
+    it should "only update the value once in a rhombus" in {
       val v = Var(7)
       val w = v.map(x => x + 1)
       val x = v.map(x => x + 2)
