@@ -2,13 +2,20 @@ package react.impls
 
 import react.ReactiveLibrary
 import react.ReactiveLibrary._
+import react.impls.helper.NonCancelable
 import rx._
 
 // TODO: make these unsafes more safe
 import rx.Ctx.Owner.Unsafe.Unsafe
 
+class ObsWrapper(obs: Obs) extends Cancelable {
+  def kill(): Unit = obs.kill()
+}
+
 object ReactRxImpl extends ReactiveLibrary {
   def implementationName = "ReactRxImpl"
+
+  implicit def obsToObsWrapper(obs: Obs): ObsWrapper = new ObsWrapper(obs)
 
   class EventSource[+A](private[ReactRxImpl] val wrapped: Rx[Option[A]]) extends (Monadic[A]) with Observer[A] with Filterable[EventSource, A] {
     type F[+A] = EventSource[A]
@@ -25,8 +32,9 @@ object ReactRxImpl extends ReactiveLibrary {
       new EventSource(wrapped.flatMap(wrappedF))
     }
 
-    override def observe(f: A => Unit): Unit = {
+    override def observe(f: A => Unit): Cancelable = {
       wrapped.triggerLater { f(wrapped.now.get) }
+      NonCancelable
     }
 
     override def filter(f: (A) => Boolean): EventSource[A] = {
@@ -52,7 +60,9 @@ object ReactRxImpl extends ReactiveLibrary {
 
     override def filter(f: (A) => Boolean): Signal[A] = new Signal(wrapped.filter(f))
 
-    override def observe(f: (A) => Unit): Unit = wrapped.trigger { f(wrapped.now) }
+    override def observe(f: (A) => Unit): Cancelable = {
+      wrapped.trigger { f(wrapped.now) }
+    }
   }
 
   override def toSignal[A](init: A, event: ReactRxImpl.EventSource[A]): Signal[A] =

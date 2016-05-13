@@ -16,3 +16,5 @@ addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.fu
 libraryDependencies += "pl.metastack" %%% "metarx" % "0.1.6"  // Scala.js
 
 libraryDependencies += "com.lihaoyi" %%% "scalarx" % "0.3.1"
+
+libraryDependencies += "io.monix" %%% "monix" % "2.0-RC2"

@@ -2,7 +2,7 @@ package react.LibTests
 
 import org.scalatest.{FlatSpec, AsyncFlatSpec, Matchers}
 import react.ReactiveLibrary
-import react.ReactiveLibrary.Observer
+import react.ReactiveLibrary.{Cancelable, Observer}
 import scala.collection.mutable.MutableList
 import scala.concurrent.{Promise, Future}
 import scala.concurrent.duration.FiniteDuration
@@ -29,8 +29,11 @@ trait ReactLibraryTests {
     import ReactLibraryTests._
 
     def collectValues[A](x: Observer[A]): mutable.Seq[A] = {
-      val result = mutable.MutableList.empty[A]
-      x.observe { v => result += v }
+      val result = new mutable.MutableList[A]() {
+        var ref: Cancelable = null
+      }
+      val obs = x.observe { (v: A) => result += v }
+      result.ref = obs
       result
     }
 
@@ -73,6 +76,8 @@ trait ReactLibraryTests {
 
       v1.update(10)
       v2.update("z")
+
+      def g(x: (Int, Int)): Int = { 6 }
 
       l shouldEqual List((1, "a"), (10, "a"), (10, "z"))
     }

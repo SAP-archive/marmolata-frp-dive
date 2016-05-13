@@ -35,7 +35,15 @@ object ReactiveLibrary {
   }
 
   trait Observer[+A] {
-    def observe(f: A => Unit): Unit
+    def observe(f: A => Unit): Cancelable
+  }
+
+  /**
+    * an object that can be killed
+    * and is automatically killed when garbage collected
+    */
+  trait Cancelable {
+    def kill(): Unit
   }
 }
 
@@ -50,6 +58,7 @@ trait ReactiveLibrary {
 
   def toSignal[A] (init: A, event: EventSource[A]): Signal[A]
   def toEvent[A] (signal: Signal[A]): EventSource[A]
+
 
   def implementationName: String
 }

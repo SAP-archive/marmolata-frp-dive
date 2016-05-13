@@ -1,8 +1,9 @@
 package react.impls
 
 import pl.metastack.metarx
-import pl.metastack.metarx._
-import _root_.react.ReactiveLibrary
+import pl.metastack.metarx.{Cancelable => MetaCancelable, _}
+import react.impls.helper.NonCancelable
+import react.ReactiveLibrary
 import _root_.react.ReactiveLibrary._
 
 object MetaRxImpl extends ReactiveLibrary  {
@@ -19,8 +20,9 @@ object MetaRxImpl extends ReactiveLibrary  {
       new EventSourceImpl(wrapped.flatMap(wrappedF))
     }
 
-    override def observe(f: A => Unit): Unit = {
+    override def observe(f: A => Unit): Cancelable = {
       wrapped.silentAttach(f)
+      NonCancelable
     }
 
     override def filter(f: (A) => Boolean): EventSourceImpl[A, D] = {
@@ -46,9 +48,12 @@ object MetaRxImpl extends ReactiveLibrary  {
       new SignalImpl(wrapped.flatMap(wrappedF).cache(f(wrapped.get).wrapped.get))
     }
 
-    override def now: A = wrapped.get
+    def now: A = wrapped.get
 
-    override def observe(f: A => Unit): Unit = wrapped.attach(f)
+    def observe(f: A => Unit): Cancelable = {
+      wrapped.attach(f)
+      NonCancelable
+    }
   }
 
   type Signal[+A] = SignalImpl[A, _ <: A]
