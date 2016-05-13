@@ -27,12 +27,30 @@ object ReactRxImpl extends ReactiveLibrary {
       new Event(wrapped.map(_.map(f)))
     }
 
-    override def flatMap[B](f: (A) => Event[B]): Event[B] = {
+    def flatMap[B](f: A => Event[B]): Event[B] = {
       def wrappedF(a: Option[A]) = a match {
         case Some(x) => f(x).wrapped
         case None => Rx(None)
       }
-      new Event(wrapped.flatMap(wrappedF))
+      new Event(wrapped.flatMap(wrappedF).reduce { (x, y) =>
+        (x, y) match {
+          case (_, Some(z)) => Some(z)
+          case (y, None) => y
+        }
+      })
+    }
+
+    def flatMap2[B](f: (A) => Event[B]): Event[B] = {
+      val withLast = wrapped.fold(List.empty[Option[Rx[Option[B]]]]){ (list, next) => (next.map(f(_).wrapped) +: list) }
+
+      val result = Rx {
+        withLast().collectFirst {
+          case Some(rx) if (rx().isDefined) =>
+            rx().get
+        }
+      }
+
+      new Event(result)
     }
 
     override def observe(f: A => Unit): Cancelable = {

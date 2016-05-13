@@ -144,12 +144,11 @@ trait ReactLibraryTests {
     it should "handle futures which come in out of order" in {
       import scala.scalajs.concurrent.JSExecutionContext.Implicits.runNow
 
-      val promiseEmitter = new Array[() => Unit](10)
+      val promises = new Array[Promise[Int]](10)
+      (0 to 9) foreach { i => promises(i) = Promise[Int]() }
       val v = Var(0)
       val w = toEvent(v).flatMap { i =>
-        val p = Promise[Int]()
-        promiseEmitter(i) = { () => { p success i; Unit } }
-        futureToEvent(p.future)
+        futureToEvent(promises(i).future)
       }
 
       val l = collectValues(w)
@@ -158,14 +157,14 @@ trait ReactLibraryTests {
       v.update(2)
       v.update(3)
 
-      promiseEmitter(1)()
-      promiseEmitter(3)()
-      promiseEmitter(2)()
+      promises(1) success 1
+      promises(3) success 3
+      promises(2) success 2
 
       v.update(4)
-      promiseEmitter(4)()
+      promises(4) success 4
 
-      l shouldEqual List(1, 3, 4)
+      l shouldEqual List(3, 4)
     }
 
 
