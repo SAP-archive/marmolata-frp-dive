@@ -72,7 +72,7 @@ object MetaRxImpl extends ReactiveLibrary  {
     new EventSourceImpl(FutureToReadChannel(f))
   }
 
-  class Var[A](private val _wrapped: metarx.Var[A]) extends SignalImpl[A, A](_wrapped) with VarTrait[A] {
+  class Var[A](private val _wrapped: metarx.Var[A]) extends SignalImpl[A, A](_wrapped.distinct) with VarTrait[A] {
     override def update(newValue: A): Unit = {
       _wrapped := newValue
     }
