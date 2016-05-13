@@ -13,7 +13,7 @@ import monix.execution.Scheduler.Implicits.global
 import react.impls.helper.NonCancelable
 
 import scala.collection.mutable.MutableList
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 
 object MonixImpl extends ReactiveLibrary {
@@ -72,6 +72,8 @@ object MonixImpl extends ReactiveLibrary {
   override def implementationName: String = "MonixImpl"
 
   override def toEvent[A](signal: Signal[A]): MonixImpl.Event[A] = new Event(signal.wrapped)
+
+  override def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = ???
 
   class VarImpl[A](var value: A) extends MonixObservable[A] {
     //TODO: handle continuations etc.

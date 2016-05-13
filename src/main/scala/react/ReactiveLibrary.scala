@@ -1,5 +1,7 @@
 package react
 
+import scala.concurrent.{ExecutionContext, Future}
+
 
 object ReactiveLibrary {
   trait Monadic[+A] {
@@ -59,7 +61,7 @@ trait ReactiveLibrary {
 
   def toSignal[A] (init: A, event: Event[A]): Signal[A]
   def toEvent[A] (signal: Signal[A]): Event[A]
-
+  def futureToEvent[A] (f: Future[A])(implicit ec: ExecutionContext): Event[A]
 
   def implementationName: String
 }

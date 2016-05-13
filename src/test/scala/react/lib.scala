@@ -84,14 +84,14 @@ trait ReactLibraryTests {
 
     it should "allow update a variable inside map" in {
       val v1 = Var(0)
-      val v2 = Var(0)
+      val v2 = Var(-1)
       val l = collectValues(v2)
 
       v1.map(v2.update(_))
 
       (1 to 5) foreach (v1.update)
 
-      l shouldEqual List(0, 1, 2, 3, 4, 5)
+      l shouldEqual List(-1, 0, 1, 2, 3, 4, 5)
     }
 
     it should "not trigger when a value isn't changed" in {
@@ -103,6 +103,33 @@ trait ReactLibraryTests {
 
       l shouldEqual List(0)
     }
+
+    it should "allow to update a variable inside observe" in {
+      val v = Var(0)
+      val w = Var(-1)
+      val l = collectValues(w)
+
+      v.observe { w.update(_) }
+
+      (1 to 5) foreach (v.update)
+
+      l shouldEqual List(-1, 0, 1, 2, 3, 4, 5)
+    }
+
+    it should "allow to update a variable inside observe, but doesn't need to be atomic" in {
+      val v = Var(0)
+      val v2 = Var(-1)
+      v.observe { v2.update(_) }
+
+      val r = v zip v2
+      val l = collectValues(r)
+
+      v.update(1)
+      v.update(2)
+
+      l should contain inOrder((0,0), (1,1), (2,2))
+    }
+
 
     //it should "allow update a variable inside "
 

@@ -6,6 +6,8 @@ import react.impls.helper.NonCancelable
 import react.ReactiveLibrary
 import _root_.react.ReactiveLibrary._
 
+import scala.concurrent.{ExecutionContext, Future}
+
 object MetaRxImpl extends ReactiveLibrary  {
   def implementationName = "MetaRxImpl"
 
@@ -65,6 +67,10 @@ object MetaRxImpl extends ReactiveLibrary  {
 
   def toEvent[A](signal: Signal[A]): Event[A] =
     new EventSourceImpl(signal.wrapped)
+
+  def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = {
+    new EventSourceImpl(FutureToReadChannel(f))
+  }
 
   class Var[A](private val _wrapped: metarx.Var[A]) extends SignalImpl[A, A](_wrapped) with VarTrait[A] {
     override def update(newValue: A): Unit = {

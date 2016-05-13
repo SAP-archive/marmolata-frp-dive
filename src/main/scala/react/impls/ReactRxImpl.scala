@@ -4,6 +4,9 @@ import react.ReactiveLibrary
 import react.ReactiveLibrary._
 import react.impls.helper.NonCancelable
 import rx._
+import rx.async.FutureCombinators
+
+import scala.concurrent.{ExecutionContext, Future}
 
 // TODO: make these unsafes more safe
 import rx.Ctx.Owner.Unsafe.Unsafe
@@ -70,6 +73,11 @@ object ReactRxImpl extends ReactiveLibrary {
 
   override def toEvent[A](signal: Signal[A]): Event[A] =
     new Event(signal.wrapped.map(Some(_)))
+
+
+  def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = {
+    new Event(f.map(Some(_): Option[A]).toRx(None))
+  }
 
   class Var[A](private val _wrapped: rx.Var[A]) extends Signal[A](_wrapped) with VarTrait[A] {
     def update(newValue: A): Unit = _wrapped.update(newValue)
