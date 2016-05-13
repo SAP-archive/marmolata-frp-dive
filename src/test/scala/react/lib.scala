@@ -4,7 +4,7 @@ import org.scalatest.{FlatSpec, AsyncFlatSpec, Matchers}
 import react.ReactiveLibrary
 import react.ReactiveLibrary.{Cancelable, Observable}
 import scala.collection.mutable.MutableList
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{ExecutionContext, Promise, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration._
 import scala.ref.WeakReference
@@ -116,7 +116,7 @@ trait ReactLibraryTests {
       l shouldEqual List(-1, 0, 1, 2, 3, 4, 5)
     }
 
-    it should "allow to update a variable inside observe, but doesn't need to be atomic" in {
+    it should "allow to update a variable inside observe, but then doesn't need to be atomic" in {
       val v = Var(0)
       val v2 = Var(-1)
       v.observe { v2.update(_) }
@@ -131,7 +131,43 @@ trait ReactLibraryTests {
     }
 
 
-    //it should "allow update a variable inside "
+    it should "trigger futures" in {
+      import scala.scalajs.concurrent.JSExecutionContext.Implicits.runNow
+
+      val p = Promise[Int]()
+      val v = futureToEvent(p.future)
+      val l = collectValues(v)
+      p success 10
+      l shouldEqual List(10)
+    }
+
+    it should "handle futures which come in out of order" in {
+      import scala.scalajs.concurrent.JSExecutionContext.Implicits.runNow
+
+      val promiseEmitter = new Array[() => Unit](10)
+      val v = Var(0)
+      val w = toEvent(v).flatMap { i =>
+        val p = Promise[Int]()
+        promiseEmitter(i) = { () => { p success i; Unit } }
+        futureToEvent(p.future)
+      }
+
+      val l = collectValues(w)
+
+      v.update(1)
+      v.update(2)
+      v.update(3)
+
+      promiseEmitter(1)()
+      promiseEmitter(3)()
+      promiseEmitter(2)()
+
+      v.update(4)
+      promiseEmitter(4)()
+
+      l shouldEqual List(1, 3, 4)
+    }
+
 
     it should "get times when clicked" in {
       val time = Var(0)
