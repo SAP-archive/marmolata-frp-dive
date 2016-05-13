@@ -2,7 +2,7 @@ package react.LibTests
 
 import org.scalatest.{FlatSpec, AsyncFlatSpec, Matchers}
 import react.ReactiveLibrary
-import react.ReactiveLibrary.{Cancelable, Observer}
+import react.ReactiveLibrary.{Cancelable, Observable}
 import scala.collection.mutable.MutableList
 import scala.concurrent.{Promise, Future}
 import scala.concurrent.duration.FiniteDuration
@@ -28,7 +28,7 @@ trait ReactLibraryTests {
     import reactLibrary._
     import ReactLibraryTests._
 
-    def collectValues[A](x: Observer[A]): mutable.Seq[A] = {
+    def collectValues[A](x: Observable[A]): mutable.Seq[A] = {
       val result = new mutable.MutableList[A]() {
         var ref: Cancelable = null
       }
@@ -94,14 +94,14 @@ trait ReactLibraryTests {
       l shouldEqual List(0, 1, 2, 3, 4, 5)
     }
 
-    it should "trigger when a value isn't changed" in {
+    it should "not trigger when a value isn't changed" in {
       val v = Var(0)
       val l = collectValues(v)
 
       v.update(0)
       v.update(0)
 
-      l shouldEqual List(0, 0, 0)
+      l shouldEqual List(0)
     }
 
     //it should "allow update a variable inside "

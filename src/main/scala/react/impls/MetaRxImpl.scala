@@ -9,7 +9,7 @@ import _root_.react.ReactiveLibrary._
 object MetaRxImpl extends ReactiveLibrary  {
   def implementationName = "MetaRxImpl"
 
-  class EventSourceImpl[+A, D <: A](private[MetaRxImpl] val wrapped: ReadChannel[D]) extends Monadic[A] with Observer[A] with Filterable[EventSource, A] {
+  class EventSourceImpl[+A, D <: A](private[MetaRxImpl] val wrapped: ReadChannel[D]) extends Monadic[A] with Observable[A] with Filterable[Event, A] {
     type F[+X] = EventSourceImpl[X, _ <: X]
 
     def map[B](f: A => B): EventSourceImpl[B, B] =
@@ -34,9 +34,9 @@ object MetaRxImpl extends ReactiveLibrary  {
     }
   }
 
-  type EventSource[+A] = EventSourceImpl[A, _ <: A]
+  type Event[+A] = EventSourceImpl[A, _ <: A]
 
-  class SignalImpl[+A, D <: A](private[MetaRxImpl] val wrapped: ReadStateChannel[D]) extends Monadic[A] with SignalTrait[A] with Observer[A] {
+  class SignalImpl[+A, D <: A](private[MetaRxImpl] val wrapped: ReadStateChannel[D]) extends Monadic[A] with SignalTrait[A] with Observable[A] {
     type F[+B] = SignalImpl[B, _ <: B]
 
     override def map[B](f: A => B): SignalImpl[B, B] = {
@@ -61,9 +61,9 @@ object MetaRxImpl extends ReactiveLibrary  {
   def _toSignal[A](init: A, event: EventSourceImpl[A, X] forSome { type X <: A}): Signal[A] =
     new SignalImpl(event.wrapped.map(x => x: A).cache(init))
 
-  def toSignal[A](init: A, event: EventSource[A]): Signal[A] = _toSignal[A](init, event)
+  def toSignal[A](init: A, event: Event[A]): Signal[A] = _toSignal[A](init, event)
 
-  def toEvent[A](signal: Signal[A]): EventSource[A] =
+  def toEvent[A](signal: Signal[A]): Event[A] =
     new EventSourceImpl(signal.wrapped)
 
   class Var[A](private val _wrapped: metarx.Var[A]) extends SignalImpl[A, A](_wrapped) with VarTrait[A] {

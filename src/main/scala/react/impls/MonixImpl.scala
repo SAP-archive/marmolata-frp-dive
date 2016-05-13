@@ -7,7 +7,7 @@ import react.ReactiveLibrary.Cancelable
 import react.ReactiveLibrary
 import react.ReactiveLibrary._
 
-import monix.reactive.Observable
+import monix.reactive.{Observable => MonixObservable}
 
 import monix.execution.Scheduler.Implicits.global
 import react.impls.helper.NonCancelable
@@ -17,19 +17,19 @@ import scala.concurrent.Future
 
 
 object MonixImpl extends ReactiveLibrary {
-  class EventSource[+A](private[MonixImpl] val wrapped: Observable[A]) extends Monadic[A] with Observer[A] with Filterable[EventSource, A] {
-    type F[+X] = EventSource[X]
+  class Event[+A](private[MonixImpl] val wrapped: MonixObservable[A]) extends Monadic[A] with Observable[A] with Filterable[Event, A] {
+    type F[+X] = Event[X]
 
     def flatMap[B](f: (A) => F[B]): F[B] = {
-      new EventSource(wrapped.switchMap { x => f(x).wrapped })
+      new Event(wrapped.switchMap { x => f(x).wrapped })
     }
 
     def map[B](f: (A) => B): F[B] = {
-      new EventSource(wrapped.map(f))
+      new Event(wrapped.map(f))
     }
 
-    def filter(f: (A) => Boolean): EventSource[A] = {
-      new EventSource(wrapped.filter(f))
+    def filter(f: (A) => Boolean): Event[A] = {
+      new Event(wrapped.filter(f))
     }
 
     def observe(f: A => Unit): Cancelable = {
@@ -43,7 +43,7 @@ object MonixImpl extends ReactiveLibrary {
   }
 
   // TODO: get rid of asInstanceOf / check that this is safe
-  class Signal[+A](private[MonixImpl] val wrapped: Observable[A], private[MonixImpl] var currentVal: Any) extends Monadic[A] with Observer[A] with SignalTrait[A] {
+  class Signal[+A](private[MonixImpl] val wrapped: MonixObservable[A], private[MonixImpl] var currentVal: Any) extends Monadic[A] with Observable[A] with SignalTrait[A] {
     type F[+X] = Signal[X]
 
     wrapped.subscribe { x => currentVal = x; Continue }
@@ -67,13 +67,13 @@ object MonixImpl extends ReactiveLibrary {
     }
   }
 
-  def toSignal[A](init: A, event: EventSource[A]): Signal[A] = new Signal(event.wrapped, init)
+  def toSignal[A](init: A, event: Event[A]): Signal[A] = new Signal(event.wrapped, init)
 
   override def implementationName: String = "MonixImpl"
 
-  override def toEvent[A](signal: Signal[A]): MonixImpl.EventSource[A] = new EventSource(signal.wrapped)
+  override def toEvent[A](signal: Signal[A]): MonixImpl.Event[A] = new Event(signal.wrapped)
 
-  class VarImpl[A](var value: A) extends Observable[A] {
+  class VarImpl[A](var value: A) extends MonixObservable[A] {
     //TODO: handle continuations etc.
 
     val subscriptions: MutableList[Option[Subscriber[A]]] = MutableList.empty

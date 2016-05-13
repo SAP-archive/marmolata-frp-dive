@@ -34,8 +34,9 @@ object ReactiveLibrary {
     def update(newValue: A): Unit
   }
 
-  trait Observer[+A] {
+  trait Observable[+A] {
     def observe(f: A => Unit): Cancelable
+    //def killAll(): Unit
   }
 
   /**
@@ -49,15 +50,15 @@ object ReactiveLibrary {
 
 trait ReactiveLibrary {
   import ReactiveLibrary._
-  type EventSource[+A] <: (Monadic[A] { type F[B] = EventSource[B] }) with Observer[A] with Filterable[EventSource, A]
-  type Signal[+A] <: (Monadic[A] { type F[B] = Signal[B] }) with SignalTrait[A] with Observer[A]
+  type Event[+A] <: (Monadic[A] { type F[B] = Event[B] }) with Observable[A] with Filterable[Event, A]
+  type Signal[+A] <: (Monadic[A] { type F[B] = Signal[B] }) with SignalTrait[A] with Observable[A]
 
   type Var[A] <: VarTrait[A] with Signal[A]
 
   val Var: VarCompanionObject[Var]
 
-  def toSignal[A] (init: A, event: EventSource[A]): Signal[A]
-  def toEvent[A] (signal: Signal[A]): EventSource[A]
+  def toSignal[A] (init: A, event: Event[A]): Signal[A]
+  def toEvent[A] (signal: Signal[A]): Event[A]
 
 
   def implementationName: String
