@@ -104,6 +104,28 @@ trait ReactLibraryTests {
       l shouldEqual List(0)
     }
 
+    it should "not trigger when a value isn't changed in a dependent signal" in {
+      val v = Var(0)
+      val r = v.map(Function.const(3))
+      val l = collectValues(r)
+
+      v.update(1)
+      v.update(2)
+
+      l shouldEqual List(3)
+    }
+
+    it should "do trigger when a value isn't changed as an event" in {
+      val v = Var(0)
+      val r = toEvent(v).map(Function.const(0))
+      val l = collectValues(r)
+
+      v.update(2)
+      v.update(3)
+
+      l shouldEqual List(0, 0)
+    }
+
     it should "allow to update a variable inside observe" in {
       val v = Var(0)
       val w = Var(-1)
@@ -168,7 +190,7 @@ trait ReactLibraryTests {
     }
 
 
-    it should "get times when clicked" in {
+    ignore should "get times when clicked" in {
       val time = Var(0)
       val click = Var()
 

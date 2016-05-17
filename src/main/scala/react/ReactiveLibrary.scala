@@ -34,6 +34,9 @@ object ReactiveLibrary {
 
   trait VarTrait[A] extends SignalTrait[A] {
     def update(newValue: A): Unit
+
+    @inline
+    final def := (newValue: A): Unit = update(newValue)
   }
 
   trait Observable[+A] {
