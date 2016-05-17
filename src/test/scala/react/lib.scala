@@ -190,18 +190,18 @@ trait ReactLibraryTests {
     }
 
 
-    ignore should "get times when clicked" in {
+    it should "get times when clicked" in {
       val time = Var(0)
-      val click = Var()
+      val click = Event[Unit]()
 
       val result = Var(time.now)
-      click.map { (Unit) => result.update(time.now) }
+      click.observe { _ => result.update(time.now) }
 
       val l = collectValues(result)
 
       (1 to 100) foreach { x =>
         time.update(x)
-        if (x % 30 == 0) { click.update() }
+        if (x % 30 == 0) { click emit () }
       }
 
       l shouldEqual List(0, 30, 60, 90)
@@ -245,6 +245,17 @@ trait ReactLibraryTests {
       v.update(7)
 
       counter shouldBe 0
+    }
+
+    it should "not observe after killed anymore" in {
+      val v = Var(0)
+      val l = mutable.MutableList[Int]()
+      val c = v.observe { l += _ }
+      v.update(3)
+      c.kill()
+      v.update(6)
+
+      l shouldEqual List(0, 3)
     }
   }
 }

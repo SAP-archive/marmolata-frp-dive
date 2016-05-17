@@ -28,6 +28,10 @@ object ReactiveLibrary {
     def apply[A](init: A): Var[A]
   }
 
+  trait EventCompanionObject[NativeEvent[_]] {
+    def apply[A](): NativeEvent[A]
+  }
+
   trait SignalTrait[+A] {
     def now: A
   }
@@ -39,15 +43,15 @@ object ReactiveLibrary {
     final def := (newValue: A): Unit = update(newValue)
   }
 
+  trait NativeEventTrait[A] {
+    def emit(value: A): Unit
+  }
+
   trait Observable[+A] {
     def observe(f: A => Unit): Cancelable
     //def killAll(): Unit
   }
 
-  /**
-    * an object that can be killed
-    * and is automatically killed when garbage collected
-    */
   trait Cancelable {
     def kill(): Unit
   }
@@ -59,8 +63,11 @@ trait ReactiveLibrary {
   type Signal[+A] <: (Monadic[A] { type F[B] = Signal[B] }) with SignalTrait[A] with Observable[A]
 
   type Var[A] <: VarTrait[A] with Signal[A]
+  type NativeEvent[A] <: NativeEventTrait[A] with Event[A]
+
 
   val Var: VarCompanionObject[Var]
+  val Event: EventCompanionObject[NativeEvent]
 
   def toSignal[A] (init: A, event: Event[A]): Signal[A]
   def toEvent[A] (signal: Signal[A]): Event[A]

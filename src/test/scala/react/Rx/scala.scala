@@ -13,5 +13,6 @@ class RxTests extends FlatSpec with Matchers with ReactLibraryTests {
 
   List(new AnyRef with ScalaRxImpl with ReactiveLibraryUsage,
     new AnyRef with MetaRxImpl with ReactiveLibraryUsage,
-    new AnyRef with MonixImpl with ReactiveLibraryUsage) foreach testImpl
+    new AnyRef with MonixImpl with ReactiveLibraryUsage
+  ) foreach testImpl
 }

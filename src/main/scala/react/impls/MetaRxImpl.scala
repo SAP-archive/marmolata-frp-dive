@@ -11,6 +11,10 @@ import scala.concurrent.{ExecutionContext, Future}
 trait MetaRxImpl extends ReactiveLibrary  {
   def implementationName = "MetaRxImpl"
 
+  case class Cancelable(wrapped: ReadChannel[Unit]) extends ReactiveLibrary.Cancelable {
+    override def kill(): Unit = wrapped.dispose()
+  }
+
   class EventSourceImpl[+A, D <: A](private[MetaRxImpl] val wrapped: ReadChannel[D]) extends Monadic[A] with Observable[A] with Filterable[Event, A] {
     type F[+X] = EventSourceImpl[X, _ <: X]
 
@@ -23,8 +27,7 @@ trait MetaRxImpl extends ReactiveLibrary  {
     }
 
     override def observe(f: A => Unit): Cancelable = {
-      wrapped.silentAttach(f)
-      NonCancelable
+      Cancelable(wrapped.silentAttach(f))
     }
 
     override def filter(f: (A) => Boolean): EventSourceImpl[A, D] = {
@@ -42,19 +45,18 @@ trait MetaRxImpl extends ReactiveLibrary  {
     type F[+B] = SignalImpl[B, _ <: B]
 
     override def map[B](f: A => B): SignalImpl[B, B] = {
-      new SignalImpl(wrapped.map(f).cache(f(wrapped.get)))
+      new SignalImpl(wrapped.map(f).distinct.cache(f(wrapped.get)))
     }
 
     override def flatMap[B](f: A => F[B]): F[B] = {
       def wrappedF(a: A): ReadChannel[B] = f(a).wrapped.map(x => x)
-      new SignalImpl(wrapped.flatMap(wrappedF).cache(f(wrapped.get).wrapped.get))
+      new SignalImpl(wrapped.flatMap(wrappedF).distinct.cache(f(wrapped.get).wrapped.get))
     }
 
     def now: A = wrapped.get
 
     def observe(f: A => Unit): Cancelable = {
-      wrapped.attach(f)
-      NonCancelable
+      Cancelable(wrapped.attach(f))
     }
   }
 
@@ -82,5 +84,13 @@ trait MetaRxImpl extends ReactiveLibrary  {
 
   object Var extends VarCompanionObject[Var] {
     override def apply[A](init: A): Var[A] = new Var(metarx.Var(init))
+  }
+
+  class NativeEvent[A](_wrapped: metarx.Channel[A]) extends EventSourceImpl[A, A](_wrapped) with NativeEventTrait[A] {
+    def emit(value: A): Unit = _wrapped := value
+  }
+
+  object Event extends EventCompanionObject[NativeEvent] {
+    def apply[A](): NativeEvent[A] = new NativeEvent(metarx.Channel())
   }
 }
