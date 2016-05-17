@@ -16,7 +16,7 @@ import scala.collection.mutable.MutableList
 import scala.concurrent.{ExecutionContext, Future}
 
 
-object MonixImpl extends ReactiveLibrary {
+trait MonixImpl extends ReactiveLibrary {
   class Event[+A](private[MonixImpl] val wrapped: MonixObservable[A]) extends Monadic[A] with Observable[A] with Filterable[Event, A] {
     type F[+X] = Event[X]
 
@@ -71,7 +71,7 @@ object MonixImpl extends ReactiveLibrary {
 
   override def implementationName: String = "MonixImpl"
 
-  override def toEvent[A](signal: Signal[A]): MonixImpl.Event[A] = new Event(signal.wrapped)
+  override def toEvent[A](signal: Signal[A]): Event[A] = new Event(signal.wrapped)
 
   override def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = ???
 

@@ -8,7 +8,7 @@ import _root_.react.ReactiveLibrary._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object MetaRxImpl extends ReactiveLibrary  {
+trait MetaRxImpl extends ReactiveLibrary  {
   def implementationName = "MetaRxImpl"
 
   class EventSourceImpl[+A, D <: A](private[MetaRxImpl] val wrapped: ReadChannel[D]) extends Monadic[A] with Observable[A] with Filterable[Event, A] {
@@ -80,7 +80,7 @@ object MetaRxImpl extends ReactiveLibrary  {
     override def now: A = wrapped.get
   }
 
-  object Var extends VarCompanionObject[MetaRxImpl.Var] {
+  object Var extends VarCompanionObject[Var] {
     override def apply[A](init: A): Var[A] = new Var(metarx.Var(init))
   }
 }

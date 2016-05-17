@@ -1,7 +1,7 @@
 package react.LibTests
 
 import org.scalatest.{FlatSpec, AsyncFlatSpec, Matchers}
-import react.ReactiveLibrary
+import react.{ReactiveLibraryUsage, ReactiveLibrary}
 import react.ReactiveLibrary.{Cancelable, Observable}
 import scala.collection.mutable.MutableList
 import scala.concurrent.{ExecutionContext, Promise, Future}
@@ -24,7 +24,7 @@ object ReactLibraryTests {
 trait ReactLibraryTests {
   self: FlatSpec with Matchers =>
 
-  def runLibraryTests(reactLibrary: ReactiveLibrary) {
+  def runLibraryTests(reactLibrary: ReactiveLibrary with ReactiveLibraryUsage) {
     import reactLibrary._
     import ReactLibraryTests._
 
@@ -39,7 +39,7 @@ trait ReactLibraryTests {
 
     it should "not directly trigger its value when used as event, but directly trigger as variable" in {
       val var1 = Var(5)
-      val asEvent = toEvent(var1)
+      val asEvent = var1.event
 
       val l1 = collectValues(var1)
       val le = collectValues(asEvent)
@@ -117,7 +117,7 @@ trait ReactLibraryTests {
 
     it should "do trigger when a value isn't changed as an event" in {
       val v = Var(0)
-      val r = toEvent(v).map(Function.const(0))
+      val r = v.event.map(Function.const(0))
       val l = collectValues(r)
 
       v.update(2)
@@ -157,7 +157,7 @@ trait ReactLibraryTests {
       import scala.scalajs.concurrent.JSExecutionContext.Implicits.runNow
 
       val p = Promise[Int]()
-      val v = futureToEvent(p.future)
+      val v = p.future.event
       val l = collectValues(v)
       p success 10
       l shouldEqual List(10)
@@ -169,7 +169,7 @@ trait ReactLibraryTests {
       val promises = new Array[Promise[Int]](10)
       (0 to 9) foreach { i => promises(i) = Promise[Int]() }
       val v = Var(0)
-      val w = toEvent(v).flatMap { i =>
+      val w = v.event.flatMap { i =>
         futureToEvent(promises(i).future)
       }
 
@@ -236,6 +236,15 @@ trait ReactLibraryTests {
       intercept[Exception] {
         w.now
       }
+    }
+
+    ignore should "compute map lazily" in {
+      val v = Var(0)
+      var counter = 0
+      val w = v.map { x => counter += 1; x }
+      v.update(7)
+
+      counter shouldBe 0
     }
   }
 }
