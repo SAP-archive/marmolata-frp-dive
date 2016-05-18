@@ -3,7 +3,7 @@ package react.impls
 import com.sun.javafx.collections.ObservableListWrapper
 import react.ReactiveLibrary
 import react.ReactiveLibrary._
-import react.impls.helper.NonCancelable
+import react.impls.helper.{DefaultConstObject, NonCancelable}
 import rx._
 import rx.async.FutureCombinators
 
@@ -31,7 +31,7 @@ case class CompareUnequal[+A](get: A) {
   def map[B](f: A => B) = CompareUnequal(f(get))
 }
 
-trait ScalaRxImpl extends ReactiveLibrary {
+trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
   def implementationName = "Scala.Rx wrapper"
 
   // we need to hold all references to observers
@@ -44,14 +44,13 @@ trait ScalaRxImpl extends ReactiveLibrary {
     }
   }
 
-
   implicit def obsToObsWrapper(obs: Obs): ObsWrapper = {
     val result = new ObsWrapper(obs, ReferenceHolder)
     ReferenceHolder.references += result
     result
   }
 
-  class Event[+A](private[ScalaRxImpl] val wrapped: Rx[Option[CompareUnequal[A]]]) extends (Monadic[A]) with Observable[A] with Filterable[Event, A] {
+  class Event[+A](private[ScalaRxImpl] val wrapped: Rx[Option[CompareUnequal[A]]]) extends (Monadic[A]) with Observable[A] with Filterable[A] {
     type F[+A] = Event[A]
 
     override def map[B](f: A => B): Event[B] = {
@@ -97,7 +96,7 @@ trait ScalaRxImpl extends ReactiveLibrary {
     }
   }
 
-  class Signal[+A](private[ScalaRxImpl] val wrapped: Rx[A]) extends Monadic[A] with Filterable[Signal, A] with SignalTrait[A] with Observable[A] {
+  class Signal[+A](private[ScalaRxImpl] val wrapped: Rx[A]) extends Monadic[A] with Filterable[A] with SignalTrait[A] with Observable[A] {
     type F[+A] = Signal[A]
 
     override def now: A = wrapped.now

@@ -274,5 +274,84 @@ trait ReactLibraryTests {
 
       counter should be <= 500
     }
+
+    it should "zip together events only if there's a previous value" in {
+      val v1 = Event[Int]()
+      val v2 = Event[Int]()
+      val l = collectValues(v1 zip v2)
+
+      v1 emit 7
+      v1 emit 8
+      v2 emit 3
+      v2 emit 5
+
+      val l2 = collectValues(v1 zip v2)
+
+      v2 emit 99
+
+      l shouldBe List((8, 3), (8, 5), (8, 99))
+      l2 shouldBe List.empty
+    }
+
+    it should "not remember its value as an event (1)" in {
+      val v = Var(7)
+      val w = Var(8)
+      val e = v.toEvent
+
+      val l = collectValues(e zip w.toEvent)
+
+      w := 10
+      w := 11
+      v := 8
+      v := 9
+
+      l shouldBe List((8, 11), (9, 11))
+    }
+
+    it should "not remember its value as an event (2)" in {
+      val v = Var(7)
+      v.toEvent.toSignal(0).now shouldBe 0
+    }
+
+    it should "support reassignable signals" in {
+      val v = ReassignableSignal(0)
+      val l = collectValues(v)
+      val w = Var(7)
+
+      v := 7
+      v := 8
+
+      v := w
+      w := 10
+      w := 13
+      v := 13
+      w := 15
+
+      l shouldEqual List(0, 7, 8, 7, 10, 13)
+    }
+
+    it should "support reassignable events" in {
+      val v = ReassignableEvent[Int]
+      val l = collectValues(v)
+
+      val z1 = Event[Int]
+      val z2 = Event[Int]
+
+      v := z1
+      z1 emit 3
+      z1 emit 5
+
+      v := z2
+      z2 emit 5
+      z1 emit 17
+      z1 emit 29
+      z2 emit 33
+
+      v := z1
+      z1 emit 100
+      z2 emit 1000
+
+      l shouldEqual List(3, 5, 5, 33, 100)
+    }
   }
 }

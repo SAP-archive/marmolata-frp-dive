@@ -2,20 +2,20 @@ package react.impls
 
 import pl.metastack.metarx
 import pl.metastack.metarx.{Cancelable => MetaCancelable, _}
-import react.impls.helper.NonCancelable
+import react.impls.helper.{DefaultConstObject, NonCancelable}
 import react.ReactiveLibrary
 import _root_.react.ReactiveLibrary._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait MetaRxImpl extends ReactiveLibrary  {
+trait MetaRxImpl extends ReactiveLibrary with DefaultConstObject {
   def implementationName = "MetaRxImpl"
 
   case class Cancelable(wrapped: ReadChannel[Unit]) extends ReactiveLibrary.Cancelable {
     override def kill(): Unit = wrapped.dispose()
   }
 
-  class EventSourceImpl[+A, D <: A](private[MetaRxImpl] val wrapped: ReadChannel[D]) extends Monadic[A] with Observable[A] with Filterable[Event, A] {
+  class EventSourceImpl[+A, D <: A](private[MetaRxImpl] val wrapped: ReadChannel[D]) extends Monadic[A] with Observable[A] with Filterable[A] {
     type F[+X] = EventSourceImpl[X, _ <: X]
 
     def map[B](f: A => B): EventSourceImpl[B, B] =

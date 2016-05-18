@@ -28,10 +28,24 @@ object ReactiveLibrary {
         p2 <- other
       } yield ((p1, p2))
     }
+
+    def zipWith[B, C](other: F[B])(fun: (A, B) => C): F[C] = {
+      for {
+        p1 <- this
+        p2 <- other
+      } yield (fun(p1, p2))
+    }
   }
 
-  trait Filterable[F[+_], +A] {
+  trait Filterable[+A] {
+    self =>
+    type F[+B] <: Filterable[B] with Monadic[B] { type F[C] = self.F[C] }
+
     def filter(f: A => Boolean): F[A]
+
+    def mapPartial[B](f: PartialFunction[A, B]): F[B] = {
+      filter(f.isDefinedAt(_)).map(f.apply(_))
+    }
   }
 
   trait VarCompanionObject[Var[_]] {
@@ -65,11 +79,15 @@ object ReactiveLibrary {
   trait Cancelable {
     def kill(): Unit
   }
+
+  trait ConstCompanionObject[Signal[_]] {
+    def apply[A](value: A): Signal[A]
+  }
 }
 
 trait ReactiveLibrary {
   import ReactiveLibrary._
-  type Event[+A] <: (Monadic[A] { type F[B] = Event[B] }) with Observable[A] with Filterable[Event, A]
+  type Event[+A] <: (Monadic[A] { type F[B] = Event[B] }) with Observable[A] with Filterable[A]
   type Signal[+A] <: (Monadic[A] { type F[B] = Signal[B] }) with SignalTrait[A] with Observable[A]
 
   type Var[A] <: VarTrait[A] with Signal[A]
@@ -77,6 +95,7 @@ trait ReactiveLibrary {
 
   val Var: VarCompanionObject[Var]
   val Event: EventCompanionObject[EventSource]
+  val Const: ConstCompanionObject[Var]
 
   def toSignal[A] (init: A, event: Event[A]): Signal[A]
   def toEvent[A] (signal: Signal[A]): Event[A]

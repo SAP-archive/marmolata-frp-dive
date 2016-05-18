@@ -10,14 +10,14 @@ import react.ReactiveLibrary._
 import monix.reactive.{Observable => MonixObservable}
 
 import monix.execution.Scheduler.Implicits.global
-import react.impls.helper.NonCancelable
+import react.impls.helper.{DefaultConstObject, NonCancelable}
 
 import scala.collection.mutable.MutableList
 import scala.concurrent.{ExecutionContext, Future}
 
 
-trait MonixImpl extends ReactiveLibrary {
-  class Event[+A](private[MonixImpl] val wrapped: MonixObservable[A]) extends Monadic[A] with Observable[A] with Filterable[Event, A] {
+trait MonixImpl extends ReactiveLibrary with DefaultConstObject {
+  class Event[+A](private[MonixImpl] val wrapped: MonixObservable[A]) extends Monadic[A] with Observable[A] with Filterable[A] {
     type F[+X] = Event[X]
 
     def flatMap[B](f: (A) => F[B]): F[B] = {
