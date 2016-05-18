@@ -3,6 +3,16 @@ package react
 import scala.concurrent.{ExecutionContext, Future}
 
 
+// TODO: think about if we want to introduce implicits for ownership
+// to get rid of events/signals when they aren't used anymore
+// this may be particularly important in flatMap where a new event/signal
+// is created whenever a value changes and thus we may want to clean up
+// earlier signals/events soonish
+// if we still want to support for-notation, we probably need to do some macro-voodoo to
+// introduce implicit parameters in the right places, because Scala doesn't support automatically inserted
+// implicits in functions depending on their type signature
+// curiously, functions don't seem to support implicits in any way, only methods do and you can't even write a type signature for them
+
 object ReactiveLibrary {
   trait Monadic[+A] {
     self =>
@@ -63,11 +73,10 @@ trait ReactiveLibrary {
   type Signal[+A] <: (Monadic[A] { type F[B] = Signal[B] }) with SignalTrait[A] with Observable[A]
 
   type Var[A] <: VarTrait[A] with Signal[A]
-  type NativeEvent[A] <: NativeEventTrait[A] with Event[A]
-
+  type EventSource[A] <: NativeEventTrait[A] with Event[A]
 
   val Var: VarCompanionObject[Var]
-  val Event: EventCompanionObject[NativeEvent]
+  val Event: EventCompanionObject[EventSource]
 
   def toSignal[A] (init: A, event: Event[A]): Signal[A]
   def toEvent[A] (signal: Signal[A]): Event[A]

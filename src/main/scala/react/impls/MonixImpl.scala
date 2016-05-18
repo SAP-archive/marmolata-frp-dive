@@ -102,11 +102,11 @@ trait MonixImpl extends ReactiveLibrary {
     override def apply[A](init: A): Var[A] = new Var(new VarImpl(init))
   }
 
-  class NativeEvent[A](_wrapped: monix.reactive.Observable[A]) extends Event[A](_wrapped) with NativeEventTrait[A] {
+  class EventSource[A](_wrapped: monix.reactive.Observable[A]) extends Event[A](_wrapped) with NativeEventTrait[A] {
     override def emit(value: A): Unit = ???
   }
 
-  object Event extends EventCompanionObject[NativeEvent] {
-    override def apply[A](): NativeEvent[A] = ???
+  object Event extends EventCompanionObject[EventSource] {
+    override def apply[A](): EventSource[A] = ???
   }
 }

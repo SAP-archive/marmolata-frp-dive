@@ -86,11 +86,11 @@ trait MetaRxImpl extends ReactiveLibrary  {
     override def apply[A](init: A): Var[A] = new Var(metarx.Var(init))
   }
 
-  class NativeEvent[A](_wrapped: metarx.Channel[A]) extends EventSourceImpl[A, A](_wrapped) with NativeEventTrait[A] {
+  class EventSource[A](_wrapped: metarx.Channel[A]) extends EventSourceImpl[A, A](_wrapped) with NativeEventTrait[A] {
     def emit(value: A): Unit = _wrapped := value
   }
 
-  object Event extends EventCompanionObject[NativeEvent] {
-    def apply[A](): NativeEvent[A] = new NativeEvent(metarx.Channel())
+  object Event extends EventCompanionObject[EventSource] {
+    def apply[A](): EventSource[A] = new EventSource(metarx.Channel())
   }
 }
