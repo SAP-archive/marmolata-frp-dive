@@ -17,7 +17,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 
 trait MonixImpl extends ReactiveLibrary with DefaultConstObject {
-  class Event[+A](private[MonixImpl] val wrapped: MonixObservable[A]) extends Monadic[A] with Observable[A] with Filterable[A] {
+  class Event[+A](private[MonixImpl] val wrapped: MonixObservable[A]) extends EventTrait[A] {
     type F[+X] = Event[X]
 
     def flatMap[B](f: (A) => F[B]): F[B] = {
@@ -40,6 +40,8 @@ trait MonixImpl extends ReactiveLibrary with DefaultConstObject {
       }
       NonCancelable
     }
+
+    override def merge[B >: A](other: Event[B]): Event[B] = ???
   }
 
   // TODO: get rid of asInstanceOf / check that this is safe

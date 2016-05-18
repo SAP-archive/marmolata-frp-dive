@@ -353,5 +353,35 @@ trait ReactLibraryTests {
 
       l shouldEqual List(3, 5, 5, 33, 100)
     }
+
+    it should "play well with merges" in {
+      val e = Event[List[Either[Int, Int]]]
+
+      val e1 = e map { _.collectFirst{ case Left(x) => x } } mapPartial { case Some(x) => x }
+      val e2 = e map { _.collectFirst{ case Right(x) => x } } mapPartial { case Some(x) => x }
+
+      val l = collectValues(e1 merge e2)
+
+      e emit List(Left(3))
+      e emit List(Right(5))
+
+      e emit List(Left(7), Right(8))
+      e emit List(Left(22))
+      e emit List()
+      e emit List(Left(9))
+
+      l shouldEqual List(3, 5, 7, 22, 9)
+    }
+
+    it should "also emit the identical element" in {
+      val e = Event[Unit]
+      val l = collectValues(e)
+      val v = ()
+      e emit v
+      e emit v
+      e emit v
+
+      l shouldEqual List((), (), ())
+    }
   }
 }

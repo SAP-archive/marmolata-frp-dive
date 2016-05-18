@@ -56,8 +56,12 @@ object ReactiveLibrary {
     def apply[A](): NativeEvent[A]
   }
 
-  trait SignalTrait[+A] {
+  trait SignalTrait[+A] extends Monadic[A] with Observable[A] {
     def now: A
+  }
+
+  trait EventTrait[+A] extends Monadic[A] with Observable[A] with Filterable[A] {
+    def merge[B >: A](other: F[B]): F[B]
   }
 
   trait VarTrait[A] extends SignalTrait[A] {
@@ -87,8 +91,8 @@ object ReactiveLibrary {
 
 trait ReactiveLibrary {
   import ReactiveLibrary._
-  type Event[+A] <: (Monadic[A] { type F[B] = Event[B] }) with Observable[A] with Filterable[A]
-  type Signal[+A] <: (Monadic[A] { type F[B] = Signal[B] }) with SignalTrait[A] with Observable[A]
+  type Event[+A] <: EventTrait[A] { type F[B] = Event[B] }
+  type Signal[+A] <: SignalTrait[A] { type F[B] = Signal[B] }
 
   type Var[A] <: VarTrait[A] with Signal[A]
   type EventSource[A] <: NativeEventTrait[A] with Event[A]

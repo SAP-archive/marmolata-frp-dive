@@ -15,7 +15,7 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultConstObject {
     override def kill(): Unit = wrapped.dispose()
   }
 
-  class EventSourceImpl[+A, D <: A](private[MetaRxImpl] val wrapped: ReadChannel[D]) extends Monadic[A] with Observable[A] with Filterable[A] {
+  class EventSourceImpl[+A, D <: A](private[MetaRxImpl] val wrapped: ReadChannel[D]) extends EventTrait[A] {
     type F[+X] = EventSourceImpl[X, _ <: X]
 
     def map[B](f: A => B): EventSourceImpl[B, B] =
@@ -36,6 +36,10 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultConstObject {
 
     override def zip[B](other: EventSourceImpl[B, _ <: B]): EventSourceImpl[(A, B), _ <: (A, B)] = {
       new EventSourceImpl(wrapped.zip(other.wrapped.map(x => x)))
+    }
+
+    def merge[B >: A](other: EventSourceImpl[B, _ <: B]): EventSourceImpl[B, B] = {
+      new EventSourceImpl(wrapped.map(x => x: B).merge(other.wrapped.map(x => x: B)))
     }
   }
 

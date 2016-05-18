@@ -50,7 +50,7 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
     result
   }
 
-  class Event[+A](private[ScalaRxImpl] val wrapped: Rx[Option[CompareUnequal[A]]]) extends (Monadic[A]) with Observable[A] with Filterable[A] {
+  class Event[+A](private[ScalaRxImpl] val wrapped: Rx[Option[CompareUnequal[A]]]) extends EventTrait[A] {
     type F[+A] = Event[A]
 
     override def map[B](f: A => B): Event[B] = {
@@ -68,6 +68,27 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
           case (y, None) => y
         }
       })
+    }
+
+    def merge[B >: A](other: Event[B]): Event[B] = {
+      val p1 = wrapped.fold((0, None): (Int, Option[CompareUnequal[A]])) { (v, current) =>
+        (v._1 + 1, current)
+      }
+      val p2 = other.wrapped.fold((0, None): (Int, Option[CompareUnequal[B]])) { (v, current) =>
+        (v._1 + 1, current)
+      }
+
+      def foldFun(v: (Int, Int, Option[CompareUnequal[B]]), current: ((Int, Option[CompareUnequal[A]]), (Int, Option[CompareUnequal[B]]))) = {
+        val result =
+          if (v._1 < current._1._1)
+            current._1._2
+          else
+            current._2._2
+        (current._1._1, current._2._1, result)
+      }
+
+      val result = Rx { (p1(), p2()) }.fold((0, 0, None): (Int, Int, Option[CompareUnequal[B]]))(foldFun)
+      new Event(result.map(_._3))
     }
 
     def flatMapWhichAcceptsLateEvents[B](f: (A) => Event[B]): Event[B] = {

@@ -1,7 +1,7 @@
 import sbt.Keys._
 
 lazy val commonSettings = Seq(
-  version := "0.1.4",
+  version := "0.1.5",
   organization := "com.sap.marmolata",
   scalaVersion := "2.11.8",
   libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test"
