@@ -1,7 +1,7 @@
 import sbt.Keys._
 
 lazy val commonSettings = Seq(
-  version := "0.1",
+  version := "0.1.1",
   organization := "com.sap.marmolata",
   scalaVersion := "2.11.8",
   libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test"
@@ -11,7 +11,7 @@ lazy val root = (project in file("core")).
   enablePlugins(ScalaJSPlugin).
   settings(commonSettings: _*).
   settings(
-    name := "reactive-interface-tests"
+    name := "reactive-interface"
   )
 
 lazy val scalarx = (project in file("implementations/scalarx")).
