@@ -1,6 +1,6 @@
 package react
 
-import cats.{Cartesian, Monad, Apply, Functor}
+import cats._
 import cats.Functor.ToFunctorOps
 import cats.syntax.{FlatMapOps, FunctorSyntax}
 import cats.syntax.all._
@@ -71,12 +71,12 @@ trait ReactiveLibraryUsage {
   // implicits for Var, EventSource
   implicit def varIsFunctor[A](v: Var[A]): Functor.Ops[Signal, A] = v: Signal[A]
   implicit def varIsApply[A](v: Var[A]): Apply.Ops[Signal, A] = v: Signal[A]
-  implicit def varIsFlatMap[A](v: Var[A])(implicit signalIsMonad: Monad[Signal]): FlatMapOps[Signal, A] = v: Signal[A]
+  implicit def varIsFlatMap[A](v: Var[A])(implicit signalIsMonad: FlatMap[Signal]): FlatMapOps[Signal, A] = v: Signal[A]
   implicit def varIsCartesian[A](v: Var[A]): Cartesian.Ops[Signal, A] = v: Signal[A]
 
   implicit def eventSourceIsFunctor[A](v: EventSource[A]): Functor.Ops[Event, A] = v: Event[A]
   implicit def eventSourceIsApply[A](v: EventSource[A]): Apply.Ops[Event, A] = v: Event[A]
-  implicit def eventSourceIsMonad[A](v: EventSource[A])(implicit eventIsMonad: Monad[Event]): FlatMapOps[Event, A] = v: Event[A]
+  implicit def eventSourceIsMonad[A](v: EventSource[A])(implicit eventIsMonad: FlatMap[Event]): FlatMapOps[Event, A] = v: Event[A]
   implicit def eventSourceIsCartesian[A](v: EventSource[A]): Cartesian.Ops[Event, A] = v: Event[A]
 
 

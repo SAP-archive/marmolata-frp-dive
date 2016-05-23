@@ -38,7 +38,7 @@ object ReactiveLibrary {
 
   trait EventTrait[+A] extends Observable[A]
 
-  trait EventOperationsTrait[F[+_]] extends Applicative[F] with Filterable[F] with Mergeable[F]
+  trait EventOperationsTrait[F[+_]] extends Apply[F] with Filterable[F] with Mergeable[F]
   trait SignalOperationsTrait[F[+_]] extends Applicative[F]
 
   trait VarTrait[A] extends SignalTrait[A] {
@@ -77,8 +77,8 @@ trait ReactiveLibrary {
   implicit val signalApplicative: SignalOperationsTrait[Signal]
 
   trait UnsafeImplicits {
-    implicit val eventApplicative: Monad[Event]
-    implicit val signalApplicative: Monad[Signal]
+    implicit val eventApplicative: FlatMap[Event] with EventOperationsTrait[Event]
+    implicit val signalApplicative: FlatMap[Signal] with SignalOperationsTrait[Signal]
   }
 
   // use these with care as these operations are often leaking

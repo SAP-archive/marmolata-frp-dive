@@ -24,20 +24,56 @@ object ReactLibraryTests {
 }
 
 // TODO this is probably somewhere in the standard library
+// TODO I have no clue where the bug is that makes it necessary to execute recurisive calls directly
+//      but otherwise the strangeFlatMapBug test doesn't work
 class SimpleExecutionContext extends ExecutionContext {
-  private var queue: List[Runnable] = List.empty
+  self =>
+  private var queue: List[(Runnable, String)] = List.empty
+  private var currentlyExecuting = false
 
   def execute(runnable: Runnable): Unit = {
-    queue = queue :+ runnable
+    if (currentlyExecuting)
+      runnable.run()
+    else
+      queue = queue :+ (runnable, "")
   }
+
+  def subExecutor(name: String): ExecutionContext =
+    new ExecutionContext {
+      override def execute(runnable: Runnable): Unit =
+        if (currentlyExecuting)
+          runnable.run()
+        else
+          queue = queue :+ (runnable, name)
+
+      override def reportFailure(cause: Throwable): Unit = self.reportFailure(cause)
+    }
 
   def reportFailure(cause: Throwable): Unit = {
     println(cause)
   }
 
-  def runQueue(): Unit = {
-    queue foreach { _.run() }
+  def runQueue(name: String = "", recursive: Int = 0): Unit = {
+    println(s"run queue ${name} with ${queue.length} items ${recursive}")
+    val theQueue = queue
+    currentlyExecuting = true
     queue = List.empty
+    try {
+      theQueue foreach { case (r, s) => r.run();
+        if (s != "") {
+          println(s"executed ${s}")
+        }
+      }}
+    catch {
+      case t: Throwable =>
+        println(s"major problem: ${t}")
+    }
+
+
+    if (!queue.isEmpty && recursive < 50)
+      runQueue(name, recursive + 1)
+    if (recursive == 0)
+      currentlyExecuting = false
   }
 }
 
@@ -191,42 +227,70 @@ trait ReactLibraryTests {
         val p = Promise[Int]()
         val v = p.future.toEvent
         val l = collectValues(v)
-        queue.runQueue()
+        queue.runQueue("trigger 1")
 
         p success 10
+        queue.runQueue("trigger 2")
 
         l shouldEqual List(10)
       }
 
       it should "handle futures which come in out of order" in {
         import unsafeImplicits.eventApplicative
-        implicit val queue = new SimpleExecutionContext()
+        val queue = new SimpleExecutionContext()
 
         val promises = new Array[Promise[Int]](10)
         (0 to 9) foreach { i => promises(i) = Promise[Int]() }
         val v = Var(0)
         val w = v.toEvent.flatMap { i =>
-          futureToEvent(promises(i).future)
+          promises(i).future.toEvent(queue.subExecutor(s"${i}"))
         }
 
         val l = collectValues(w)
 
+        queue.runQueue("g0")
         v.update(1)
+        queue.runQueue("g1")
+
         v.update(2)
+        queue.runQueue("g2")
+
         v.update(3)
+        queue.runQueue("g3")
 
         promises(1) success 1
+        queue.runQueue("g4")
+
+
         promises(3) success 3
+        queue.runQueue("g5")
+
+
         promises(2) success 2
+        queue.runQueue("g6")
 
         v.update(4)
         promises(4) success 4
 
-        queue.runQueue()
+        queue.runQueue("handle")
 
         l shouldEqual List(3, 4)
       }
 
+      it should "not trigger this strange flatMap bug" in {
+        implicit val queue = new SimpleExecutionContext()
+        val v = Event[Int]
+        val p = Promise[Int]
+        import unsafeImplicits.eventApplicative
+        val r = v.flatMap { i => p.future.toEvent }
+        v emit 10
+        queue.runQueue("q1")
+        val l = collectValues(r)
+        p success 7
+        queue.runQueue("q2")
+
+        l shouldEqual List(7)
+      }
 
       it should "get times when clicked" in {
         val time = Var(0)

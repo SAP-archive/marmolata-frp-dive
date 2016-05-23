@@ -1,6 +1,6 @@
 package react.impls
 
-import cats.Monad
+import cats.{FlatMap, Monad}
 import com.sun.javafx.collections.ObservableListWrapper
 import react.ReactiveLibrary
 import react.ReactiveLibrary._
@@ -231,7 +231,12 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
 
 
   def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = {
-    new Event(f.map(x => Some(CompareUnequal(x)): Option[CompareUnequal[A]]).toRx(None))
+    // I don't really understand why we can't use the implcitly supplied execution context, but this can lead to a
+//    val ec: ExecutionContext = new ExecutionContext {
+//      override def execute(runnable: Runnable): Unit = runnable.run()
+//      override def reportFailure(cause: Throwable): Unit = println(cause)
+//    }
+    new Event(f.map(x => Some(CompareUnequal(x)): Option[CompareUnequal[A]])(ec).toRx(None)(ec, implicitly[Ctx.Owner]))
   }
 
   class Var[A](private val _wrapped: rx.Var[A]) extends Signal[A](_wrapped) with VarTrait[A] {
@@ -251,7 +256,7 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
   }
 
   object unsafeImplicits extends UnsafeImplicits {
-    implicit val eventApplicative: Monad[Event] = scalaRxImpl.eventApplicative
-    implicit val signalApplicative: Monad[Signal] = scalaRxImpl.signalApplicative
+    implicit val eventApplicative: EventOperationsTrait[Event] with FlatMap[Event] = scalaRxImpl.eventApplicative
+    implicit val signalApplicative: SignalOperationsTrait[Signal] with FlatMap[Signal] = scalaRxImpl.signalApplicative
   }
 }

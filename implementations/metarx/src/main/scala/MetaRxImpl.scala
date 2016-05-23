@@ -139,7 +139,7 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultConstObject {
   }
 
   object unsafeImplicits extends UnsafeImplicits {
-    override implicit val eventApplicative: Monad[Event] = metaRxImpl.eventApplicative
-    override implicit val signalApplicative: Monad[Signal] = metaRxImpl.signalApplicative
+    override implicit val eventApplicative = metaRxImpl.eventApplicative
+    override implicit val signalApplicative = metaRxImpl.signalApplicative
   }
 }
