@@ -191,9 +191,10 @@ trait ReactLibraryTests {
         val p = Promise[Int]()
         val v = p.future.toEvent
         val l = collectValues(v)
+        queue.runQueue()
+
         p success 10
 
-        queue.runQueue()
         l shouldEqual List(10)
       }
 
