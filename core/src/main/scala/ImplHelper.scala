@@ -7,6 +7,7 @@ import react.ReactiveLibrary.{ConstCompanionObject, Cancelable}
 object NonCancelable extends Cancelable {
   override def kill(): Unit = {}
 
+  import language.implicitConversions
   implicit def unitToCancelable(x: Unit): Cancelable = NonCancelable
 }
 

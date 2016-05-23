@@ -1,5 +1,6 @@
 package react.impls
 
+import cats.Monad
 import com.sun.javafx.collections.ObservableListWrapper
 import react.ReactiveLibrary
 import react.ReactiveLibrary._
@@ -32,10 +33,12 @@ case class CompareUnequal[+A](get: A) {
 }
 
 trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
+  scalaRxImpl =>
   def implementationName = "Scala.Rx wrapper"
 
   // we need to hold all references to observers
   // so that they aren't garbage collected
+  // (maybe this isn't necessary in js because its garbage collector isn't as powerful as jvm's)
   object ReferenceHolder extends ReleaseObs {
     val references: mutable.Set[ObsWrapper] = mutable.Set.empty
 
@@ -44,7 +47,7 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
     }
   }
 
-  implicit def obsToObsWrapper(obs: Obs): ObsWrapper = {
+  def obsToObsWrapper(obs: Obs): ObsWrapper = {
     val result = new ObsWrapper(obs, ReferenceHolder)
     ReferenceHolder.references += result
     result
@@ -53,32 +56,77 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
   class Event[+A](private[ScalaRxImpl] val wrapped: Rx[Option[CompareUnequal[A]]]) extends EventTrait[A] {
     type F[+A] = Event[A]
 
-    override def map[B](f: A => B): Event[B] = {
-      new Event(wrapped.map(_.map(_.map(f))))
-    }
+//    override def map[B](f: A => B): Event[B] = {
+//      new Event(wrapped.map(_.map(_.map(f))))
+//    }
+//
+//    def flatMap[B](f: A => Event[B]): Event[B] = {
+//      def wrappedF(a: Option[CompareUnequal[A]]) = a match {
+//        case Some(CompareUnequal(x)) => f(x).wrapped
+//        case None => Rx(None)
+//      }
+//      new Event(wrapped.flatMap(wrappedF).reduce { (x, y) =>
+//        (x, y) match {
+//          case (_, Some(z)) => Some(z)
+//          case (y, None) => y
+//        }
+//      })
+//    }
+//
+//    def merge[B >: A](other: Event[B]): Event[B] = {
+//      val p1 = wrapped.fold((0, None): (Int, Option[CompareUnequal[A]])) { (v, current) =>
+//        (v._1 + 1, current)
+//      }
+//      val p2 = other.wrapped.fold((0, None): (Int, Option[CompareUnequal[B]])) { (v, current) =>
+//        (v._1 + 1, current)
+//      }
+//
+//      def foldFun(v: (Int, Int, Option[CompareUnequal[B]]), current: ((Int, Option[CompareUnequal[A]]), (Int, Option[CompareUnequal[B]]))) = {
+//        val result =
+//          if (v._1 < current._1._1)
+//            current._1._2
+//          else
+//            current._2._2
+//        (current._1._1, current._2._1, result)
+//      }
+//
+//      val result = Rx { (p1(), p2()) }.fold((0, 0, None): (Int, Int, Option[CompareUnequal[B]]))(foldFun)
+//      new Event(result.map(_._3))
+//    }
+//
+//    def flatMapWhichAcceptsLateEvents[B](f: (A) => Event[B]): Event[B] = {
+//      val withLast = wrapped.fold(List.empty[Option[Rx[Option[CompareUnequal[B]]]]]){ (list, next) => (next.map((z: CompareUnequal[A]) => f(z.get).wrapped) +: list) }
+//
+//      val result = Rx {
+//        withLast().collectFirst {
+//          case Some(rx) if (rx().isDefined) =>
+//            rx().get
+//        }
+//      }
+//
+//      new Event(result)
+//    }
 
-    def flatMap[B](f: A => Event[B]): Event[B] = {
-      def wrappedF(a: Option[CompareUnequal[A]]) = a match {
-        case Some(CompareUnequal(x)) => f(x).wrapped
-        case None => Rx(None)
-      }
-      new Event(wrapped.flatMap(wrappedF).reduce { (x, y) =>
-        (x, y) match {
-          case (_, Some(z)) => Some(z)
-          case (y, None) => y
-        }
-      })
+    override def observe(f: A => Unit): Cancelable = {
+      wrapped.triggerLater { f(wrapped.now.get.get) }
+      NonCancelable
     }
+  }
 
-    def merge[B >: A](other: Event[B]): Event[B] = {
+  implicit object eventApplicative extends EventOperationsTrait[Event] with Monad[Event] {
+    // TODO: what is the right pure for events
+    override def pure[A](x: A): Event[A] = new Event(Rx(Some(CompareUnequal(x))))
+
+    override def merge[A](x1: Event[A], other: Event[A]): Event[A] = {
+      import x1._
       val p1 = wrapped.fold((0, None): (Int, Option[CompareUnequal[A]])) { (v, current) =>
         (v._1 + 1, current)
       }
-      val p2 = other.wrapped.fold((0, None): (Int, Option[CompareUnequal[B]])) { (v, current) =>
+      val p2 = other.wrapped.fold((0, None): (Int, Option[CompareUnequal[A]])) { (v, current) =>
         (v._1 + 1, current)
       }
 
-      def foldFun(v: (Int, Int, Option[CompareUnequal[B]]), current: ((Int, Option[CompareUnequal[A]]), (Int, Option[CompareUnequal[B]]))) = {
+      def foldFun(v: (Int, Int, Option[CompareUnequal[A]]), current: ((Int, Option[CompareUnequal[A]]), (Int, Option[CompareUnequal[A]]))) = {
         val result =
           if (v._1 < current._1._1)
             current._1._2
@@ -87,53 +135,85 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
         (current._1._1, current._2._1, result)
       }
 
-      val result = Rx { (p1(), p2()) }.fold((0, 0, None): (Int, Int, Option[CompareUnequal[B]]))(foldFun)
+      val result = Rx {
+        (p1(), p2())
+      }.fold((0, 0, None): (Int, Int, Option[CompareUnequal[A]]))(foldFun)
       new Event(result.map(_._3))
     }
 
-    def flatMapWhichAcceptsLateEvents[B](f: (A) => Event[B]): Event[B] = {
-      val withLast = wrapped.fold(List.empty[Option[Rx[Option[CompareUnequal[B]]]]]){ (list, next) => (next.map((z: CompareUnequal[A]) => f(z.get).wrapped) +: list) }
 
-      val result = Rx {
-        withLast().collectFirst {
-          case Some(rx) if (rx().isDefined) =>
-            rx().get
+    override def ap[A, B](ff: Event[(A) => B])(fa: Event[A]): Event[B] = {
+      new Event(Rx {
+        ff.wrapped().flatMap { x =>
+          fa.wrapped().map { p =>
+            val result = x.get(p.get)
+            CompareUnequal(result)
+          }
         }
-      }
-
-      new Event(result)
+      })
     }
 
-    override def observe(f: A => Unit): Cancelable = {
-      wrapped.triggerLater { f(wrapped.now.get.get) }
-      NonCancelable
+    override def map[A, B](fa: Event[A])(f: (A) => B): Event[B] = {
+      new Event(fa.wrapped.map {
+        _.map {
+          _.map(f)
+        }
+      })
     }
 
-    override def filter(f: (A) => Boolean): Event[A] = {
-      new Event(wrapped.filter{
+    override def filter[A](v: Event[A], f: (A) => Boolean): Event[A] = {
+      new Event(v.wrapped.filter {
         case Some(x) => f(x.get)
         case None => true
       })
     }
+
+    override def flatMap[A, B](fa: Event[A])(f: (A) => Event[B]): Event[B] = {
+      def wrappedF(a: Option[CompareUnequal[A]]) = a match {
+        case Some(CompareUnequal(x)) => f(x).wrapped
+        case None => Rx(None)
+      }
+      new Event(fa.wrapped.flatMap(wrappedF).reduce { (x, y) =>
+        (x, y) match {
+          case (_, Some(z)) => Some(z)
+          case (y, None) => y
+        }
+      })
+    }
   }
 
-  class Signal[+A](private[ScalaRxImpl] val wrapped: Rx[A]) extends Monadic[A] with Filterable[A] with SignalTrait[A] with Observable[A] {
+  class Signal[+A](private[ScalaRxImpl] val wrapped: Rx[A]) extends SignalTrait[A] {
     type F[+A] = Signal[A]
 
     override def now: A = wrapped.now
 
-    override def map[B](f: (A) => B): Signal[B] =
-      new Signal(wrapped.map(f))
-
-    override def flatMap[B](f: (A) => Signal[B]): Signal[B] = {
-      def wrappedF(a: A) = f(a).wrapped
-      new Signal(wrapped.flatMap(wrappedF))
-    }
-
-    override def filter(f: A => Boolean): Signal[A] = new Signal(wrapped.filter(f))
+//    override def map[B](f: (A) => B): Signal[B] =
+//      new Signal(wrapped.map(f))
+//
+//    override def flatMap[B](f: (A) => Signal[B]): Signal[B] = {
+//      def wrappedF(a: A) = f(a).wrapped
+//      new Signal(wrapped.flatMap(wrappedF))
+//    }
+//
+//    override def filter(f: A => Boolean): Signal[A] = new Signal(wrapped.filter(f))
 
     override def observe(f: (A) => Unit): Cancelable = {
-      wrapped.trigger { f(wrapped.now) }
+      obsToObsWrapper(wrapped.trigger { f(wrapped.now) })
+    }
+  }
+
+  implicit object signalApplicative extends SignalOperationsTrait[Signal] with Monad[Signal] {
+    override def pure[A](x: A): Signal[A] = {
+      new Signal(Rx { x })
+    }
+
+    override def ap[A, B](ff: Signal[(A) => B])(fa: Signal[A]): Signal[B] = {
+      new Signal(Rx { ff.wrapped()(implicitly[Ctx.Data])(fa.wrapped()) })
+    }
+
+    override def flatMap[A, B](fa: Signal[A])(f: (A) => Signal[B]): Signal[B] = {
+      def wrappedF(a: A) = f(a).wrapped
+      new Signal(fa.wrapped.flatMap(wrappedF))
     }
   }
 
@@ -162,11 +242,16 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
     override def apply[A](init: A): Var[A] = new Var(rx.Var(init))
   }
 
-  class EventSource[A](_wrapped: rx.Var[Option[CompareUnequal[A]]]) extends Event[A](_wrapped) with NativeEventTrait[A] {
+  class EventSource[A](_wrapped: rx.Var[Option[CompareUnequal[A]]]) extends Event[A](_wrapped) with EventSourceTrait[A] {
     def emit(value: A): Unit = _wrapped.update(Some(CompareUnequal(value)))
   }
 
   object Event extends EventCompanionObject[EventSource] {
     def apply[A](): EventSource[A] = new EventSource(rx.Var(None))
+  }
+
+  object unsafeImplicits extends UnsafeImplicits {
+    implicit val eventApplicative: Monad[Event] = scalaRxImpl.eventApplicative
+    implicit val signalApplicative: Monad[Signal] = scalaRxImpl.signalApplicative
   }
 }

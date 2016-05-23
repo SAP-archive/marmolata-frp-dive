@@ -1,5 +1,10 @@
 package react
 
+import cats.{Cartesian, Monad, Apply, Functor}
+import cats.Functor.ToFunctorOps
+import cats.syntax.{FlatMapOps, FunctorSyntax}
+import cats.syntax.all._
+
 import scala.concurrent.{ExecutionContext, Future}
 
 trait ReactiveLibraryUsage {
@@ -23,8 +28,6 @@ trait ReactiveLibraryUsage {
     def := (p: A) = constr := Const(p)
   }
 
-  implicit def reassignableSignalToSignal[A](p: ReassignableSignal[A]): Signal[A] =
-    p.constr.flatMap(identity)
 
   object ReassignableSignal {
     def apply[A](init: Signal[A]) = new ReassignableSignal(Var(init))
@@ -39,17 +42,42 @@ trait ReactiveLibraryUsage {
     def apply[A](): ReassignableEvent[A] = new ReassignableEvent(Var(Event()))
   }
 
-  implicit def reassignableEventToEvent[A](p: ReassignableEvent[A]): Event[A] =
-    p.constr.flatMap(_.toSignal).toEvent.mapPartial { case Some(x) => x }
-
   implicit class ListCombinators[T](seq: List[Signal[T]]) {
     def sequence: Signal[List[T]] = {
       val zeroChannel: Signal[List[T]] = Var[List[T]](List.empty[T])
       seq.foldLeft(zeroChannel) {
-        case (acc, readChannel) => acc.zipWith(readChannel) {
+        case (acc, readChannel) => (acc |@| readChannel) map {
           case (list, value) => list :+ value
         }
       }
     }
   }
+
+
+  import scala.language.implicitConversions
+
+
+  implicit def reassignableSignalToSignal[A](p: ReassignableSignal[A]): Signal[A] = {
+    import self.unsafeImplicits.{signalApplicative => s}
+    (p.constr: Signal[Signal[A]]).flatMap(identity)
+  }
+
+  implicit def reassignableEventToEvent[A](p: ReassignableEvent[A]): Event[A] = {
+    import self.unsafeImplicits.{signalApplicative => s}
+    import react.cat.implicits._
+    (p.constr: Signal[Event[A]]).flatMap(_.toSignal).toEvent.mapPartial { case Some(x) => x }
+  }
+
+  // implicits for Var, EventSource
+  implicit def varIsFunctor[A](v: Var[A]): Functor.Ops[Signal, A] = v: Signal[A]
+  implicit def varIsApply[A](v: Var[A]): Apply.Ops[Signal, A] = v: Signal[A]
+  implicit def varIsFlatMap[A](v: Var[A])(implicit signalIsMonad: Monad[Signal]): FlatMapOps[Signal, A] = v: Signal[A]
+  implicit def varIsCartesian[A](v: Var[A]): Cartesian.Ops[Signal, A] = v: Signal[A]
+
+  implicit def eventSourceIsFunctor[A](v: EventSource[A]): Functor.Ops[Event, A] = v: Event[A]
+  implicit def eventSourceIsApply[A](v: EventSource[A]): Apply.Ops[Event, A] = v: Event[A]
+  implicit def eventSourceIsMonad[A](v: EventSource[A])(implicit eventIsMonad: Monad[Event]): FlatMapOps[Event, A] = v: Event[A]
+  implicit def eventSourceIsCartesian[A](v: EventSource[A]): Cartesian.Ops[Event, A] = v: Event[A]
+
+
 }

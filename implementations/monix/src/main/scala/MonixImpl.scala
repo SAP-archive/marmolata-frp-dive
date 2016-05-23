@@ -40,12 +40,10 @@ trait MonixImpl extends ReactiveLibrary with DefaultConstObject {
       }
       NonCancelable
     }
-
-    override def merge[B >: A](other: Event[B]): Event[B] = ???
   }
 
   // TODO: get rid of asInstanceOf / check that this is safe
-  class Signal[+A](private[MonixImpl] val wrapped: MonixObservable[A], private[MonixImpl] var currentVal: Any) extends Monadic[A] with Observable[A] with SignalTrait[A] {
+  class Signal[+A](private[MonixImpl] val wrapped: MonixObservable[A], private[MonixImpl] var currentVal: Any) extends SignalTrait[A] {
     type F[+X] = Signal[X]
 
     wrapped.subscribe { x => currentVal = x; Continue }
@@ -104,11 +102,16 @@ trait MonixImpl extends ReactiveLibrary with DefaultConstObject {
     override def apply[A](init: A): Var[A] = new Var(new VarImpl(init))
   }
 
-  class EventSource[A](_wrapped: monix.reactive.Observable[A]) extends Event[A](_wrapped) with NativeEventTrait[A] {
+  class EventSource[A](_wrapped: monix.reactive.Observable[A]) extends Event[A](_wrapped) with EventSourceTrait[A] {
     override def emit(value: A): Unit = ???
   }
 
   object Event extends EventCompanionObject[EventSource] {
     override def apply[A](): EventSource[A] = ???
   }
+
+  val eventApplicative: EventOperationsTrait[Event] = ???
+  val signalApplicative: SignalOperationsTrait[Signal] = ???
+
+  val unsafeImplicits: UnsafeImplicits = ???
 }

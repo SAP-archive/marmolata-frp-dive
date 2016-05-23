@@ -1,10 +1,12 @@
 import sbt.Keys._
 
 lazy val commonSettings = Seq(
-  version := "0.1.6",
+  version := "0.1.7",
   organization := "com.sap.marmolata",
+  scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8",
-  libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test"
+  libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test",
+  libraryDependencies += "org.typelevel" %%% "cats" % "0.5.0"
 )
 
 lazy val root = (project in file("core")).
