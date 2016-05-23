@@ -467,6 +467,18 @@ trait ReactLibraryTests {
         l shouldEqual List(3, 5, 5, 33, 100)
       }
 
+      it should "understand map" in {
+        val v = Event[Int]
+        val w = v.map(_ * 3)
+        val l = collectValues(w)
+
+        v emit 2
+        v emit 10
+        v emit 100
+
+        l shouldEqual List(6, 30, 300)
+      }
+
       it should "play well with merges" in {
         val e = Event[List[Either[Int, Int]]]
 
