@@ -113,10 +113,7 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
     }
   }
 
-  implicit object eventApplicative extends EventOperationsTrait[Event] with Monad[Event] {
-    // TODO: what is the right pure for events
-    override def pure[A](x: A): Event[A] = new Event(Rx(Some(CompareUnequal(x))))
-
+  implicit object eventApplicative extends EventOperationsTrait[Event] with FlatMap[Event] {
     override def merge[A](x1: Event[A], other: Event[A]): Event[A] = {
       import x1._
       val p1 = wrapped.fold((0, None): (Int, Option[CompareUnequal[A]])) { (v, current) =>
@@ -140,7 +137,6 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
       }.fold((0, 0, None): (Int, Int, Option[CompareUnequal[A]]))(foldFun)
       new Event(result.map(_._3))
     }
-
 
     override def ap[A, B](ff: Event[(A) => B])(fa: Event[A]): Event[B] = {
       new Event(Rx {
@@ -202,7 +198,7 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
     }
   }
 
-  implicit object signalApplicative extends SignalOperationsTrait[Signal] with Monad[Signal] {
+  implicit object signalApplicative extends SignalOperationsTrait[Signal] with FlatMap[Signal] {
     override def pure[A](x: A): Signal[A] = {
       new Signal(Rx { x })
     }
@@ -214,6 +210,10 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
     override def flatMap[A, B](fa: Signal[A])(f: (A) => Signal[B]): Signal[B] = {
       def wrappedF(a: A) = f(a).wrapped
       new Signal(fa.wrapped.flatMap(wrappedF))
+    }
+
+    override def map[A, B](fa: Signal[A])(f: (A) => B): Signal[B] = {
+      new Signal(fa.wrapped.map(f))
     }
   }
 

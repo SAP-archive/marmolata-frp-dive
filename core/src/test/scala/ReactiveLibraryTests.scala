@@ -1,5 +1,8 @@
 package react.LibTests
 
+import algebra.Eq
+import org.scalacheck.{Gen, Arbitrary}
+import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Succeeded, FlatSpec, AsyncFlatSpec, Matchers}
 import react.{ReactiveLibraryUsage, ReactiveLibrary}
 import react.ReactiveLibrary.{Cancelable, Observable}
@@ -80,445 +83,503 @@ class SimpleExecutionContext extends ExecutionContext {
 trait ReactLibraryTests {
   self: FlatSpec with Matchers =>
 
-  trait Tests {
-    val reactLibrary: ReactiveLibrary with ReactiveLibraryUsage
+  def collectValues[A](x: Observable[A]): mutable.Seq[A] = {
+    trait CancelableTrait {
+      var ref: Cancelable
+    }
+    val result = new mutable.MutableList[A]() with CancelableTrait {
+      var ref: Cancelable = null
+    }
+    val obs = x.observe { (v: A) => result += v }
+    result.ref = obs
+    result
+  }
 
-    def runLibraryTests: Unit = {
-      import reactLibrary._
-      import ReactLibraryTests._
 
-      def collectValues[A](x: Observable[A]): mutable.Seq[A] = {
-        trait CancelableTrait {
-          var ref: Cancelable
+  val reactLibrary: ReactiveLibrary with ReactiveLibraryUsage = reactLibrary_
+  def reactLibrary_ : ReactiveLibrary with ReactiveLibraryUsage
+
+  def runLibraryTests: Unit = {
+    import reactLibrary._
+    import ReactLibraryTests._
+
+    it should "not directly trigger its value when used as event, but directly trigger as variable" in {
+      val var1 = Var(5)
+      val asEvent = var1.toEvent
+
+      val l1 = collectValues(var1)
+      val le = collectValues(asEvent)
+
+      var1.update(10)
+
+      le shouldEqual List(10)
+      l1 shouldEqual List(5, 10)
+    }
+
+    it should "only update the value once in a rhombus" in {
+      import unsafeImplicits.signalApplicative
+      val v = Var(7)
+      val w = v.map(x => x + 1)
+      val x = v.map(x => x + 2)
+      val y = w.flatMap { ww =>
+        x.map(ww + _)
+      }
+
+      val l = collectValues(y)
+
+      v.update(8)
+      v.update(9)
+
+      l shouldEqual List(8 + 9, 9 + 10, 10 + 11)
+    }
+
+    it should "allow zipping" in {
+      val v1 = Var(1)
+      val v2 = Var("a")
+
+      val zipped = v1.map2(v2)((_, _))
+      val l = collectValues(zipped)
+
+      v1.update(10)
+      v2.update("z")
+
+      def g(x: (Int, Int)): Int = {
+        6
+      }
+
+      l shouldEqual List((1, "a"), (10, "a"), (10, "z"))
+    }
+
+    it should "allow update a variable inside map" in {
+      val v1 = Var(0)
+      val v2 = Var(-1)
+      val l = collectValues(v2)
+
+      v1.map(v2.update(_))
+
+      (1 to 5) foreach (v1.update)
+
+      l shouldEqual List(-1, 0, 1, 2, 3, 4, 5)
+    }
+
+    it should "not trigger when a value isn't changed" in {
+      val v = Var(0)
+      val l = collectValues(v)
+
+      v.update(0)
+      v.update(0)
+
+      l shouldEqual List(0)
+    }
+
+    it should "not trigger when a value isn't changed in a dependent signal" in {
+      val v = Var(0)
+      val r = v.map(Function.const(3))
+      val l = collectValues(r)
+
+      v.update(1)
+      v.update(2)
+
+      l shouldEqual List(3)
+    }
+
+    it should "do trigger when a value isn't changed as an event" in {
+      val v = Var(0)
+      val r = v.toEvent.map(Function.const(0))
+      val l = collectValues(r)
+
+      v.update(2)
+      v.update(3)
+
+      l shouldEqual List(0, 0)
+    }
+
+    it should "allow to update a variable inside observe" in {
+      val v = Var(0)
+      val w = Var(-1)
+      val l = collectValues(w)
+
+      v.observe {
+        w.update(_)
+      }
+
+      (1 to 5) foreach (v.update)
+
+      l shouldEqual List(-1, 0, 1, 2, 3, 4, 5)
+    }
+
+    it should "allow to update a variable inside observe, but then doesn't need to be atomic" in {
+      val v = Var(0)
+      val v2 = Var(-1)
+      v.observe {
+        v2.update(_)
+      }
+
+      val r = v product v2
+      val l = collectValues(r)
+
+      v.update(1)
+      v.update(2)
+
+      l should contain inOrder((0, 0), (1, 1), (2, 2))
+    }
+
+
+    it should "trigger futures" in {
+      implicit val queue = new SimpleExecutionContext()
+
+      val p = Promise[Int]()
+      val v = p.future.toEvent
+      val l = collectValues(v)
+      queue.runQueue("trigger 1")
+
+      p success 10
+      queue.runQueue("trigger 2")
+
+      l shouldEqual List(10)
+    }
+
+    it should "handle futures which come in out of order" in {
+      import unsafeImplicits.eventApplicative
+      val queue = new SimpleExecutionContext()
+
+      val promises = new Array[Promise[Int]](10)
+      (0 to 9) foreach { i => promises(i) = Promise[Int]() }
+      val v = Var(0)
+      val w = v.toEvent.flatMap { i =>
+        promises(i).future.toEvent(queue.subExecutor(s"${i}"))
+      }
+
+      val l = collectValues(w)
+
+      queue.runQueue("g0")
+      v.update(1)
+      queue.runQueue("g1")
+
+      v.update(2)
+      queue.runQueue("g2")
+
+      v.update(3)
+      queue.runQueue("g3")
+
+      promises(1) success 1
+      queue.runQueue("g4")
+
+
+      promises(3) success 3
+      queue.runQueue("g5")
+
+
+      promises(2) success 2
+      queue.runQueue("g6")
+
+      v.update(4)
+      promises(4) success 4
+
+      queue.runQueue("handle")
+
+      l shouldEqual List(3, 4)
+    }
+
+    it should "not trigger this strange flatMap bug" in {
+      implicit val queue = new SimpleExecutionContext()
+      val v = Event[Int]
+      val p = Promise[Int]
+      import unsafeImplicits.eventApplicative
+      val r = v.flatMap { i => p.future.toEvent }
+      v emit 10
+      queue.runQueue("q1")
+      val l = collectValues(r)
+      p success 7
+      queue.runQueue("q2")
+
+      l shouldEqual List(7)
+    }
+
+    it should "get times when clicked" in {
+      val time = Var(0)
+      val click = Event[Unit]()
+
+      val result = Var(time.now)
+      click.observe { _ => result.update(time.now) }
+
+      val l = collectValues(result)
+
+      (1 to 100) foreach { x =>
+        time.update(x)
+        if (x % 30 == 0) {
+          click emit (())
         }
-        val result = new mutable.MutableList[A]() with CancelableTrait {
-          var ref: Cancelable = null
-        }
-        val obs = x.observe { (v: A) => result += v }
-        result.ref = obs
-        result
       }
 
-      it should "not directly trigger its value when used as event, but directly trigger as variable" in {
-        val var1 = Var(5)
-        val asEvent = var1.toEvent
+      l shouldEqual List(0, 30, 60, 90)
+    }
 
-        val l1 = collectValues(var1)
-        val le = collectValues(asEvent)
-
-        var1.update(10)
-
-        le shouldEqual List(10)
-        l1 shouldEqual List(5, 10)
+    ignore should "not leak" in {
+      val v = Var(0)
+      var s = false
+      val wr = WeakReference(v.map { _ => s = true })
+      (1 to 20) foreach {
+        v.update(_)
       }
+      s shouldEqual true
 
-      it should "only update the value once in a rhombus" in {
-        import unsafeImplicits.signalApplicative
-        val v = Var(7)
-        val w = v.map(x => x + 1)
-        val x = v.map(x => x + 2)
-        val y = w.flatMap { ww =>
-          x.map(ww + _)
-        }
-
-        val l = collectValues(y)
-
-        v.update(8)
-        v.update(9)
-
-        l shouldEqual List(8 + 9, 9 + 10, 10 + 11)
-      }
-
-      it should "allow zipping" in {
-        val v1 = Var(1)
-        val v2 = Var("a")
-
-        val zipped = v1.map2(v2)((_, _))
-        val l = collectValues(zipped)
-
-        v1.update(10)
-        v2.update("z")
-
-        def g(x: (Int, Int)): Int = {
-          6
-        }
-
-        l shouldEqual List((1, "a"), (10, "a"), (10, "z"))
-      }
-
-      it should "allow update a variable inside map" in {
-        val v1 = Var(0)
-        val v2 = Var(-1)
-        val l = collectValues(v2)
-
-        v1.map(v2.update(_))
-
-        (1 to 5) foreach (v1.update)
-
-        l shouldEqual List(-1, 0, 1, 2, 3, 4, 5)
-      }
-
-      it should "not trigger when a value isn't changed" in {
-        val v = Var(0)
-        val l = collectValues(v)
-
-        v.update(0)
-        v.update(0)
-
-        l shouldEqual List(0)
-      }
-
-      it should "not trigger when a value isn't changed in a dependent signal" in {
-        val v = Var(0)
-        val r = v.map(Function.const(3))
-        val l = collectValues(r)
-
-        v.update(1)
-        v.update(2)
-
-        l shouldEqual List(3)
-      }
-
-      it should "do trigger when a value isn't changed as an event" in {
-        val v = Var(0)
-        val r = v.toEvent.map(Function.const(0))
-        val l = collectValues(r)
-
-        v.update(2)
-        v.update(3)
-
-        l shouldEqual List(0, 0)
-      }
-
-      it should "allow to update a variable inside observe" in {
-        val v = Var(0)
-        val w = Var(-1)
-        val l = collectValues(w)
-
-        v.observe {
-          w.update(_)
-        }
-
-        (1 to 5) foreach (v.update)
-
-        l shouldEqual List(-1, 0, 1, 2, 3, 4, 5)
-      }
-
-      it should "allow to update a variable inside observe, but then doesn't need to be atomic" in {
-        val v = Var(0)
-        val v2 = Var(-1)
-        v.observe {
-          v2.update(_)
-        }
-
-        val r = v product v2
-        val l = collectValues(r)
-
-        v.update(1)
-        v.update(2)
-
-        l should contain inOrder((0, 0), (1, 1), (2, 2))
-      }
-
-
-      it should "trigger futures" in {
-        implicit val queue = new SimpleExecutionContext()
-
-        val p = Promise[Int]()
-        val v = p.future.toEvent
-        val l = collectValues(v)
-        queue.runQueue("trigger 1")
-
-        p success 10
-        queue.runQueue("trigger 2")
-
-        l shouldEqual List(10)
-      }
-
-      it should "handle futures which come in out of order" in {
-        import unsafeImplicits.eventApplicative
-        val queue = new SimpleExecutionContext()
-
-        val promises = new Array[Promise[Int]](10)
-        (0 to 9) foreach { i => promises(i) = Promise[Int]() }
-        val v = Var(0)
-        val w = v.toEvent.flatMap { i =>
-          promises(i).future.toEvent(queue.subExecutor(s"${i}"))
-        }
-
-        val l = collectValues(w)
-
-        queue.runQueue("g0")
-        v.update(1)
-        queue.runQueue("g1")
-
-        v.update(2)
-        queue.runQueue("g2")
-
-        v.update(3)
-        queue.runQueue("g3")
-
-        promises(1) success 1
-        queue.runQueue("g4")
-
-
-        promises(3) success 3
-        queue.runQueue("g5")
-
-
-        promises(2) success 2
-        queue.runQueue("g6")
-
-        v.update(4)
-        promises(4) success 4
-
-        queue.runQueue("handle")
-
-        l shouldEqual List(3, 4)
-      }
-
-      it should "not trigger this strange flatMap bug" in {
-        implicit val queue = new SimpleExecutionContext()
-        val v = Event[Int]
-        val p = Promise[Int]
-        import unsafeImplicits.eventApplicative
-        val r = v.flatMap { i => p.future.toEvent }
-        v emit 10
-        queue.runQueue("q1")
-        val l = collectValues(r)
-        p success 7
-        queue.runQueue("q2")
-
-        l shouldEqual List(7)
-      }
-
-      it should "get times when clicked" in {
-        val time = Var(0)
-        val click = Event[Unit]()
-
-        val result = Var(time.now)
-        click.observe { _ => result.update(time.now) }
-
-        val l = collectValues(result)
-
-        (1 to 100) foreach { x =>
-          time.update(x)
-          if (x % 30 == 0) {
-            click emit (())
-          }
-        }
-
-        l shouldEqual List(0, 30, 60, 90)
-      }
-
-      ignore should "not leak" in {
-        val v = Var(0)
-        var s = false
-        val wr = WeakReference(v.map { _ => s = true })
+      while (wr.get.isDefined) {
         (1 to 20) foreach {
           v.update(_)
         }
-        s shouldEqual true
+        System.gc()
+      }
 
-        while (wr.get.isDefined) {
-          (1 to 20) foreach {
-            v.update(_)
-          }
-          System.gc()
+      s = false
+      (1 to 20) foreach {
+        v.update(_)
+      }
+
+      s shouldEqual false
+    }
+
+    it should "allow exceptions" in {
+      val v = Var(0)
+      val w = v.map { x => throw new Exception("Hi") }
+      v.update(7)
+      intercept[Exception] {
+        w.now
+      }
+      Succeeded
+    }
+
+    ignore should "compute map lazily" in {
+      val v = Var(0)
+      var counter = 0
+      val w = v.map { x => counter += 1; x }
+      v.update(7)
+
+      counter shouldBe 0
+    }
+
+    it should "not observe after killed anymore" in {
+      val v = Var(0)
+      val l = mutable.MutableList[Int]()
+      val c = v.observe {
+        l += _
+      }
+      v.update(3)
+      c.kill()
+      v.update(6)
+
+      l shouldEqual List(0, 3)
+    }
+
+    it should "not recalculate unused values to often" in {
+      val v = Var(0)
+      val w = v.map(_ + 1)
+      var counter = 0
+
+      import unsafeImplicits.signalApplicative
+
+      v.flatMap { x =>
+        val result = w.map {
+          x + _
         }
-
-        s = false
-        (1 to 20) foreach {
-          v.update(_)
-        }
-
-        s shouldEqual false
+        result.map(_ => counter += 1)
       }
 
-      it should "allow exceptions" in {
-        val v = Var(0)
-        val w = v.map { x => throw new Exception("Hi") }
-        v.update(7)
-        intercept[Exception] {
-          w.now
-        }
-        Succeeded
+      1 to 100 foreach {
+        v := _
       }
 
-      ignore should "compute map lazily" in {
-        val v = Var(0)
-        var counter = 0
-        val w = v.map { x => counter += 1; x }
-        v.update(7)
+      counter should be <= 500
+    }
 
-        counter shouldBe 0
-      }
+    it should "zip together events only if there's a previous value" in {
+      val v1 = Event[Int]()
+      val v2 = Event[Int]()
+      val l = collectValues(v1 product v2)
 
-      it should "not observe after killed anymore" in {
-        val v = Var(0)
-        val l = mutable.MutableList[Int]()
-        val c = v.observe {
-          l += _
-        }
-        v.update(3)
-        c.kill()
-        v.update(6)
+      v1 emit 7
+      v1 emit 8
+      v2 emit 3
+      v2 emit 5
 
-        l shouldEqual List(0, 3)
-      }
+      val l2 = collectValues(v1 product v2)
 
-      it should "not recalculate unused values to often" in {
-        val v = Var(0)
-        val w = v.map(_ + 1)
-        var counter = 0
+      v2 emit 99
 
-        import unsafeImplicits.signalApplicative
+      l shouldBe List((8, 3), (8, 5), (8, 99))
+      l2 shouldBe List.empty
+    }
 
-        v.flatMap { x =>
-          val result = w.map {
-            x + _
-          }
-          result.map(_ => counter += 1)
-        }
+    it should "not remember its value as an event (1)" in {
+      val v = Var(7)
+      val w = Var(8)
+      val e = v.toEvent
 
-        1 to 100 foreach {
-          v := _
-        }
+      val l = collectValues(e product w.toEvent)
 
-        counter should be <= 500
-      }
+      w := 10
+      w := 11
+      v := 8
+      v := 9
 
-      it should "zip together events only if there's a previous value" in {
-        val v1 = Event[Int]()
-        val v2 = Event[Int]()
-        val l = collectValues(v1 product v2)
+      l shouldBe List((8, 11), (9, 11))
+    }
 
-        v1 emit 7
-        v1 emit 8
-        v2 emit 3
-        v2 emit 5
+    it should "not remember its value as an event (2)" in {
+      val v = Var(7)
+      v.toEvent.toSignal(0).now shouldBe 0
+    }
 
-        val l2 = collectValues(v1 product v2)
+    it should "support reassignable signals" in {
+      val v = ReassignableSignal(0)
+      val l = collectValues(v)
+      val w = Var(7)
 
-        v2 emit 99
+      v := 7
+      v := 8
 
-        l shouldBe List((8, 3), (8, 5), (8, 99))
-        l2 shouldBe List.empty
-      }
+      v := w
+      w := 10
+      w := 13
+      v := 13
+      w := 15
 
-      it should "not remember its value as an event (1)" in {
-        val v = Var(7)
-        val w = Var(8)
-        val e = v.toEvent
+      l shouldEqual List(0, 7, 8, 7, 10, 13)
+    }
 
-        val l = collectValues(e product w.toEvent)
+    it should "support reassignable events" in {
+      val v = ReassignableEvent[Int]
+      val l = collectValues(v)
 
-        w := 10
-        w := 11
-        v := 8
-        v := 9
+      val z1 = Event[Int]
+      val z2 = Event[Int]
 
-        l shouldBe List((8, 11), (9, 11))
-      }
+      v := z1
+      z1 emit 3
+      z1 emit 5
 
-      it should "not remember its value as an event (2)" in {
-        val v = Var(7)
-        v.toEvent.toSignal(0).now shouldBe 0
-      }
+      v := z2
+      z2 emit 5
+      z1 emit 17
+      z1 emit 29
+      z2 emit 33
 
-      it should "support reassignable signals" in {
-        val v = ReassignableSignal(0)
-        val l = collectValues(v)
-        val w = Var(7)
+      v := z1
+      z1 emit 100
+      z2 emit 1000
 
-        v := 7
-        v := 8
+      l shouldEqual List(3, 5, 5, 33, 100)
+    }
 
-        v := w
-        w := 10
-        w := 13
-        v := 13
-        w := 15
+    it should "understand map" in {
+      val v = Event[Int]
+      val w = v.map(_ * 3)
+      val l = collectValues(w)
 
-        l shouldEqual List(0, 7, 8, 7, 10, 13)
-      }
+      v emit 2
+      v emit 10
+      v emit 100
 
-      it should "support reassignable events" in {
-        val v = ReassignableEvent[Int]
-        val l = collectValues(v)
+      l shouldEqual List(6, 30, 300)
+    }
 
-        val z1 = Event[Int]
-        val z2 = Event[Int]
+    it should "play well with merges" in {
+      val e = Event[List[Either[Int, Int]]]
 
-        v := z1
-        z1 emit 3
-        z1 emit 5
+      val e1 = e map {
+        _.collectFirst { case Left(x) => x }
+      } mapPartial { case Some(x) => x }
+      val e2 = e map {
+        _.collectFirst { case Right(x) => x }
+      } mapPartial { case Some(x) => x }
 
-        v := z2
-        z2 emit 5
-        z1 emit 17
-        z1 emit 29
-        z2 emit 33
+      val l = collectValues(e1 merge e2)
 
-        v := z1
-        z1 emit 100
-        z2 emit 1000
+      e emit List(Left(3))
+      e emit List(Right(5))
 
-        l shouldEqual List(3, 5, 5, 33, 100)
-      }
+      e emit List(Left(7), Right(8))
+      e emit List(Left(22))
+      e emit List()
+      e emit List(Left(9))
 
-      it should "understand map" in {
-        val v = Event[Int]
-        val w = v.map(_ * 3)
-        val l = collectValues(w)
+      l shouldEqual List(3, 5, 7, 22, 9)
+    }
 
-        v emit 2
-        v emit 10
-        v emit 100
+    it should "also emit the identical element" in {
+      val e = Event[Unit]
+      val l = collectValues(e)
+      val v = ()
+      e emit v
+      e emit v
+      e emit v
 
-        l shouldEqual List(6, 30, 300)
-      }
-
-      it should "play well with merges" in {
-        val e = Event[List[Either[Int, Int]]]
-
-        val e1 = e map {
-          _.collectFirst { case Left(x) => x }
-        } mapPartial { case Some(x) => x }
-        val e2 = e map {
-          _.collectFirst { case Right(x) => x }
-        } mapPartial { case Some(x) => x }
-
-        val l = collectValues(e1 merge e2)
-
-        e emit List(Left(3))
-        e emit List(Right(5))
-
-        e emit List(Left(7), Right(8))
-        e emit List(Left(22))
-        e emit List()
-        e emit List(Left(9))
-
-        l shouldEqual List(3, 5, 7, 22, 9)
-      }
-
-      it should "also emit the identical element" in {
-        val e = Event[Unit]
-        val l = collectValues(e)
-        val v = ()
-        e emit v
-        e emit v
-        e emit v
-
-        l shouldEqual List((), (), ())
-      }
+      l shouldEqual List((), (), ())
     }
   }
 
+  def runPropertyTests: Unit = {
+    import cats.laws.discipline._
+    import reactLibrary._
 
-  def runLibraryTests(p: ReactiveLibrary with ReactiveLibraryUsage) {
-    new Tests { val reactLibrary: ReactiveLibrary with ReactiveLibraryUsage = p }.
-      runLibraryTests
+    import language.postfixOps
+
+
+    val signals: List[Var[Int]] = 0 to 9 map { _ => Var(0) } toList
+
+
+    val signalGen: Gen[Signal[Int]] =
+      Gen.oneOf(
+        Gen.posNum[Int].map(_.pure),
+        Gen.oneOf(signals)
+      )
+
+    val signalFunGen: Gen[Signal[Int => Int]] =
+      Gen.oneOf[(Int, Int) => Int](
+        (x: Int, y: Int) => x,
+        (x: Int, y: Int) => y,
+        (x: Int, y: Int) => x + y,
+        (x: Int, y: Int) => 0
+      ).flatMap( f =>
+        signalGen.map {
+          _.map(x => (y: Int) => f(x, y))
+        }
+      )
+
+    implicit val arbitrarySignal = Arbitrary[reactLibrary.Signal[Int]](signalGen)
+    implicit val arbitrarySignalFun = Arbitrary[Signal[Int => Int]](signalFunGen)
+
+    import language.postfixOps
+
+    // TODO is it allowed to do undeterministic equality here?
+    // (ideally, we'd like to return Gen[Boolean])
+    implicit def signalEq[A](implicit eqO: Eq[A]): algebra.Eq[Signal[A]] = new Eq[Signal[A]] {
+      override def eqv(x: reactLibrary.Signal[A], y: reactLibrary.Signal[A]): Boolean = {
+        if (!eqO.eqv(x.now, y.now))
+          return false
+        val l1 = collectValues(x)
+        val l2 = collectValues(y)
+
+        1 to 30 foreach { j =>
+          signals((j + 4 * j) % 10) := (j * 3)
+          if (!eqO.eqv(x.now, y.now))
+            return false
+        }
+        l1 == l2
+      }
+    }
+
+
+
+    implicit val intEq: Eq[Int] = new Eq[Int] {
+      override def eqv(x: Int, y: Int): Boolean = x == y
+    }
+
+    implicit val intTripleEq: Eq[(Int, Int, Int)] = new Eq[(Int, Int, Int)] {
+      override def eqv(x: (Int, Int, Int), y: (Int, Int, Int)): Boolean = x == y
+    }
+
+
+    ApplicativeTests[Signal].applicative[Int, Int, Int].all.check
   }
-
 }

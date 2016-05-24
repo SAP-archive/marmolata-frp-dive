@@ -6,7 +6,8 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8",
   libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test",
-  libraryDependencies += "org.typelevel" %%% "cats" % "0.5.0"
+  libraryDependencies += "org.typelevel" %%% "cats" % "0.5.0",
+  libraryDependencies += "org.typelevel" %%% "discipline" % "0.4"
 )
 
 lazy val root = (project in file("core")).
