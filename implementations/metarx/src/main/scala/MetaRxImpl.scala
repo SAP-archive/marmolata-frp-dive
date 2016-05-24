@@ -47,7 +47,7 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultConstObject {
     }
 
     override def map[A, B](fa: SignalImpl[A, _ <: A])(f: (A) => B): SignalImpl[B, _ <: B] = {
-      new SignalImpl(fa.wrapped.map(f).cache(f(fa.wrapped.get)))
+      new SignalImpl(fa.wrapped.map(f).distinct.cache(f(fa.wrapped.get)))
     }
 
     override def ap[A, B](ff: SignalImpl[(A) => B, _ <: (A) => B])(fa: SignalImpl[A, _ <: A]): SignalImpl[B, _ <: B] =

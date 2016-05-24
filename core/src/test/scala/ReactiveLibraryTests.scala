@@ -24,6 +24,10 @@ object ReactLibraryTests {
     }
     result.future
   }
+
+  trait CancelableTrait {
+    var ref: Cancelable
+  }
 }
 
 // TODO this is probably somewhere in the standard library
@@ -83,11 +87,8 @@ class SimpleExecutionContext extends ExecutionContext {
 trait ReactLibraryTests {
   self: FlatSpec with Matchers =>
 
-  def collectValues[A](x: Observable[A]): mutable.Seq[A] = {
-    trait CancelableTrait {
-      var ref: Cancelable
-    }
-    val result = new mutable.MutableList[A]() with CancelableTrait {
+  def collectValues[A](x: Observable[A]): mutable.Seq[A] with ReactLibraryTests.CancelableTrait = {
+    val result = new mutable.MutableList[A]() with ReactLibraryTests.CancelableTrait {
       var ref: Cancelable = null
     }
     val obs = x.observe { (v: A) => result += v }
@@ -525,7 +526,7 @@ trait ReactLibraryTests {
     import language.postfixOps
 
 
-    val signals: List[Var[Int]] = 0 to 9 map { _ => Var(0) } toList
+    val signals: List[Var[Int]] = 0 to 3 map { _ => Var(0) } toList
 
 
     val signalGen: Gen[Signal[Int]] =
@@ -551,6 +552,8 @@ trait ReactLibraryTests {
 
     import language.postfixOps
 
+    var counter = 0
+
     // TODO is it allowed to do undeterministic equality here?
     // (ideally, we'd like to return Gen[Boolean])
     implicit def signalEq[A](implicit eqO: Eq[A]): algebra.Eq[Signal[A]] = new Eq[Signal[A]] {
@@ -560,12 +563,25 @@ trait ReactLibraryTests {
         val l1 = collectValues(x)
         val l2 = collectValues(y)
 
-        1 to 30 foreach { j =>
-          signals((j + 4 * j) % 10) := (j * 3)
-          if (!eqO.eqv(x.now, y.now))
-            return false
+        try {
+          1 to 10 foreach { j =>
+            signals(j % 4) := (j * 3)
+            if (!eqO.eqv(x.now, y.now))
+              return false
+          }
+          if (l1 != l2) {
+            println(s"${l1} != ${l2}")
+            false
+          }
+          else
+            true
         }
-        l1 == l2
+        finally {
+          counter += 1
+          if (counter % 10 == 0) { println(s"another 10: $counter")}
+          l1.ref.kill()
+          l2.ref.kill()
+        }
       }
     }
 
