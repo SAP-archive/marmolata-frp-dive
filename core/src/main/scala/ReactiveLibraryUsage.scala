@@ -22,6 +22,7 @@ trait ReactiveLibraryUsage {
   implicit final class EventExtensions[A](event: Event[A]) {
     def toSignal(init: A) = self.toSignal(init, event)
     def toSignal: Signal[Option[A]] = event.map(Some(_): Option[A]).toSignal(None)
+    def triggerWhen[B, C](s: Signal[B], f: (A, B) => C): Event[C] = self.triggerWhen(s, event, (a: B, b: A) => f(b, a))
   }
 
   class ReassignableSignal[A](private[ReactiveLibraryUsage] val constr: Var[Signal[A]]) {

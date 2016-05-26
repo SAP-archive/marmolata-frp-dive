@@ -516,6 +516,34 @@ trait ReactLibraryTests {
 
       l shouldEqual List((), (), ())
     }
+
+    it should "use the correct semantics of triggerWhen" in {
+      val e = Event[Int]
+      val v = Var(7)
+      val l = collectValues(e.triggerWhen[Int, Int](v, _ + _))
+
+      e emit 10
+      v := 17
+      e emit 13
+      e emit 0
+
+      l shouldEqual List(17, 30, 17)
+    }
+
+    it should "use the correct semantics of triggerWhen (2)" in {
+      val ev = Var(13)
+      val e = ev.toEvent
+      val v = Var(7)
+      val l = collectValues(e.triggerWhen[Int, Int](v, _ + _))
+
+      ev := 10
+      v := 17
+      ev := 13
+      ev := 0
+
+      l shouldEqual List(17, 30, 17)
+    }
+
   }
 
   def runPropertyTests: Unit = {

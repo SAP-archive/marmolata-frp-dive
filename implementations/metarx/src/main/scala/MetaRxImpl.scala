@@ -67,6 +67,11 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultConstObject {
   def toEvent[A](signal: Signal[A]): Event[A] =
     new EventSourceImpl(signal.wrapped)
 
+
+  override protected[react] def triggerWhen[A, B, C](s: SignalImpl[A, _ <: A], e: EventSourceImpl[B, _ <: B], f: (A, B) => C): EventSourceImpl[C, _ <: C] = {
+    new EventSourceImpl[C, C](s.wrapped.zipWith(e.wrapped)(f))
+  }
+
   def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = {
     new EventSourceImpl(FutureToReadChannel(f))
   }

@@ -230,6 +230,24 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
     }.map(_.flatten))
 
 
+  override def triggerWhen[A, B, C](s: Signal[A], e: Event[B], f: (A, B) => C): Event[C] = {
+    val e2 = e.wrapped.fold((0, None): (Int, Option[CompareUnequal[B]])) { (v, current) =>
+      (v._1 + 1, current)
+    }
+
+    def foldFun(v: (Boolean, Int, Option[CompareUnequal[C]]), current: (A, (Int, Option[CompareUnequal[B]]))) = {
+      if (v._2 < current._2._1)
+        (true, current._2._1, current._2._2.map(x => CompareUnequal(f(current._1, x.get))))
+      else
+        (false, current._2._1, None)
+    }
+    val result = Rx {
+      (s.wrapped(), e2())
+    }.fold((false, 0, None): (Boolean, Int, Option[CompareUnequal[C]]))(foldFun)
+
+    new Event(result.filter(_._1).map(_._3))
+  }
+
   def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = {
     // I don't really understand why we can't use the implcitly supplied execution context, but this can lead to a
 //    val ec: ExecutionContext = new ExecutionContext {

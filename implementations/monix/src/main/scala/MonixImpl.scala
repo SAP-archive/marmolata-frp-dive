@@ -67,6 +67,8 @@ trait MonixImpl extends ReactiveLibrary with DefaultConstObject {
     }
   }
 
+  override protected[react] def triggerWhen[A, B, C](s: Signal[A], e: Event[B], f: (A, B) => C): Event[C] = ???
+
   def toSignal[A](init: A, event: Event[A]): Signal[A] = new Signal(event.wrapped, init)
 
   override def implementationName: String = "MonixImpl"

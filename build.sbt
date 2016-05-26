@@ -1,7 +1,7 @@
 import sbt.Keys._
 
 lazy val commonSettings = Seq(
-  version := "0.1.10",
+  version := "0.1.11",
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8",

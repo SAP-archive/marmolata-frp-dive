@@ -91,6 +91,7 @@ trait ReactiveLibrary {
   protected [react] def toSignal[A] (init: A, event: Event[A]): Signal[A]
   protected [react] def toEvent[A] (signal: Signal[A]): Event[A]
   protected [react] def futureToEvent[A] (f: Future[A])(implicit ec: ExecutionContext): Event[A]
+  protected [react] def triggerWhen[A, B, C] (s: Signal[A], e: Event[B], f: (A, B) => C): Event[C]
 
   def implementationName: String
 }
