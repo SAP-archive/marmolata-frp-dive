@@ -4,6 +4,7 @@ import cats._
 import cats.Functor.ToFunctorOps
 import cats.syntax.{AllSyntax, FlatMapOps, FunctorSyntax}
 import cats.syntax.all._
+import react.cat.FilterableSyntax
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -64,7 +65,7 @@ trait ReactiveLibraryUsage {
 
   implicit def reassignableEventToEvent[A](p: ReassignableEvent[A]): Event[A] = {
     import self.unsafeImplicits.{signalApplicative => s}
-    import react.cat.implicits._
+    import react.cat.filterSyntax._
     (p.constr: Signal[Event[A]]).flatMap(_.toSignal).toEvent.mapPartial { case Some(x) => x }
   }
 
@@ -82,6 +83,6 @@ trait ReactiveLibraryUsage {
     implicit def eventSourceIsCartesian[A](v: EventSource[A]): Cartesian.Ops[Event, A] = v: Event[A]
   }
 
-  object syntax extends AllSyntax with VarSyntax with EventSyntax
+  object syntax extends AllSyntax with VarSyntax with EventSyntax with FilterableSyntax
 
 }

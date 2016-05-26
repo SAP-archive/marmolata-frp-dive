@@ -13,7 +13,6 @@ import scala.concurrent.duration._
 import scala.ref.WeakReference
 import scala.scalajs.js.timers._
 import scala.collection.mutable
-import react.cat.implicits._
 
 object ReactLibraryTests {
   def sleep(duration: FiniteDuration): Future[Unit] = {

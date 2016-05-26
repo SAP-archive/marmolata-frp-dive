@@ -12,7 +12,7 @@ trait Mergeable[F[+_]] {
   def merge[A](x1: F[A], x2: F[A]): F[A]
 }
 
-object implicits {
+trait FilterableSyntax {
   implicit class FilterableObs[F[+_], +A](value: F[A])(implicit isFilterable: Filterable[F]) {
     def filter(cond: A => Boolean) = isFilterable.filter(value, cond)
 
@@ -26,3 +26,5 @@ object implicits {
     def merge[B >: A](other: F[B]): F[B] = isMergeable.merge(value, other)
   }
 }
+
+object filterSyntax extends FilterableSyntax
