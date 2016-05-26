@@ -55,7 +55,6 @@ trait ReactiveLibraryUsage {
     }
   }
 
-
   import scala.language.implicitConversions
 
 
@@ -84,6 +83,9 @@ trait ReactiveLibraryUsage {
     implicit def eventSourceIsCartesian[A](v: EventSource[A]): Cartesian.Ops[Event, A] = v: Event[A]
   }
 
-  object syntax extends AllSyntax with VarSyntax with EventSyntax with FilterableSyntax
+  object syntax extends AllSyntax with VarSyntax with EventSyntax with FilterableSyntax {
+    implicit def eventSourceIsMergeable[A](e: EventSource[A]): MergeableObs[Event, A] = new MergeableObs(e)
+    implicit def eventSourceIsFilterable[A](e: EventSource[A]): FilterableObs[Event, A] = new FilterableObs(e)
+  }
 
 }
