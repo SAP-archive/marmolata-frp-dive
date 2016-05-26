@@ -13,7 +13,6 @@ import scala.concurrent.duration._
 import scala.ref.WeakReference
 import scala.scalajs.js.timers._
 import scala.collection.mutable
-import cats.syntax.all._
 import react.cat.implicits._
 
 object ReactLibraryTests {
@@ -48,9 +47,9 @@ class SimpleExecutionContext extends ExecutionContext {
   def subExecutor(name: String): ExecutionContext =
     new ExecutionContext {
       override def execute(runnable: Runnable): Unit =
-        if (currentlyExecuting)
-          runnable.run()
-        else
+        //if (currentlyExecuting)
+        //  runnable.run()
+        //else
           queue = queue :+ (runnable, name)
 
       override def reportFailure(cause: Throwable): Unit = self.reportFailure(cause)
@@ -102,6 +101,7 @@ trait ReactLibraryTests {
 
   def runLibraryTests: Unit = {
     import reactLibrary._
+    import reactLibrary.syntax._
     import ReactLibraryTests._
 
     it should "not directly trigger its value when used as event, but directly trigger as variable" in {
@@ -522,6 +522,7 @@ trait ReactLibraryTests {
   def runPropertyTests: Unit = {
     import cats.laws.discipline._
     import reactLibrary._
+    import reactLibrary.syntax._
 
     import language.postfixOps
 
@@ -596,6 +597,6 @@ trait ReactLibraryTests {
     }
 
 
-    ApplicativeTests[Signal].applicative[Int, Int, Int].all.check
+    //ApplicativeTests[Signal].applicative[Int, Int, Int].all.check
   }
 }
