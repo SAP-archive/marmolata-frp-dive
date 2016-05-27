@@ -112,7 +112,7 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultConstObject with ReactiveLi
     def emit(value: A): Unit = _wrapped := value
   }
 
-  object Event extends EventCompanionObject[EventSource] {
+  object Event extends EventCompanionObjectImplementationHelper {
     def apply[A](): EventSource[A] = new EventSource(metarx.Channel[A])
   }
 

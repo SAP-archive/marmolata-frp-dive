@@ -24,8 +24,9 @@ object ReactiveLibrary {
     def apply[A](init: A): Var[A]
   }
 
-  trait EventCompanionObject[NativeEvent[_]] {
+  trait EventCompanionObject[Event[_], NativeEvent[_]] {
     def apply[A](): NativeEvent[A]
+    def Never: Event[Nothing]
   }
 
   trait Observable[+A] {
@@ -91,7 +92,7 @@ trait ReactiveLibrary {
   val unsafeImplicits: UnsafeImplicits
 
   val Var: VarCompanionObject[Var]
-  val Event: EventCompanionObject[EventSource]
+  val Event: EventCompanionObject[Event, EventSource]
   val Const: ConstCompanionObject[Var]
 
   protected [react] def toSignal[A] (init: A, event: Event[A]): Signal[A]

@@ -269,7 +269,7 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject with ReactiveL
     def emit(value: A): Unit = _wrapped.update(Some(CompareUnequal(value)))
   }
 
-  object Event extends EventCompanionObject[EventSource] {
+  object Event extends EventCompanionObjectImplementationHelper {
     def apply[A](): EventSource[A] = new EventSource(rx.Var(None))
   }
 
