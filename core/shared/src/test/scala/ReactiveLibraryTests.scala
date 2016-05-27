@@ -11,18 +11,9 @@ import scala.concurrent.{ExecutionContext, Promise, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration._
 import scala.ref.WeakReference
-import scala.scalajs.js.timers._
 import scala.collection.mutable
 
 object ReactLibraryTests {
-  def sleep(duration: FiniteDuration): Future[Unit] = {
-    val result = Promise[Unit]()
-    setTimeout(duration) {
-      result.success((): Unit)
-    }
-    result.future
-  }
-
   trait CancelableTrait {
     var ref: Cancelable
   }
