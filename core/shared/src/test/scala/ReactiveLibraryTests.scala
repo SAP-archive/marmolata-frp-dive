@@ -546,6 +546,24 @@ trait ReactLibraryTests {
         val y: Var[Int] = ???
       }
     }
+
+    it should "Never behave as neutral element" in {
+      val e1 = Event[Int]
+      val e2 = Event.Never
+      val e3 = e1 merge e2
+
+      val l1 = collectValues(e1)
+      val l2 = collectValues(e2)
+      val l3 = collectValues(e3)
+
+      e1 emit 7
+      e1 emit 9
+      e1 emit 11
+
+      l1 shouldEqual List(7, 9, 11)
+      l2 shouldBe empty
+      l3 shouldEqual List(7, 9, 11)
+    }
   }
 
   def runPropertyTests: Unit = {

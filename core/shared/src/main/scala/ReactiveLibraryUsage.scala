@@ -4,7 +4,7 @@ import cats._
 import cats.Functor.ToFunctorOps
 import cats.syntax.{AllSyntax, FlatMapOps, FunctorSyntax}
 import cats.syntax.all._
-import react.cat.FilterableSyntax
+import react.cat.{Mergeable, FilterableSyntax}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -17,12 +17,17 @@ trait ReactiveLibraryUsage {
 
   implicit final class SignalExtensions[A](s: Signal[A]) {
     def toEvent: Event[A] = self.toEvent(s)
+    def triggerWhen[B, C](e: Event[B], f: (A, B) => C): Event[C] = self.triggerWhen(s, e, f)
+    def triggerWhen[B](e: Event[B]): Event[A] = triggerWhen[B, A](e, (x, _) => x)
   }
 
   implicit final class EventExtensions[A](event: Event[A]) {
     def toSignal(init: A) = self.toSignal(init, event)
     def toSignal: Signal[Option[A]] = event.map(Some(_): Option[A]).toSignal(None)
     def triggerWhen[B, C](s: Signal[B], f: (A, B) => C): Event[C] = self.triggerWhen(s, event, (a: B, b: A) => f(b, a))
+    def or(e: Event[Nothing]): Event[Unit] = {
+      implicitly[Mergeable[Event]].merge(event.map(Function.const(Unit)), e.map(Function.const(Unit)))
+    }
   }
 
   class ReassignableSignal[A](private[ReactiveLibraryUsage] val constr: Var[Signal[A]]) {
