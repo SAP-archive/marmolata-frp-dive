@@ -65,13 +65,19 @@ object ReactiveLibrary {
   }
 }
 
-trait ReactiveLibrary {
-  import ReactiveLibrary._
-  type Event[+A] <: EventTrait[A] { type F[B] = Event[B] }
-  type Signal[+A] <: SignalTrait[A] { type F[B] = Signal[B] }
+import ReactiveLibrary._
 
-  type Var[A] <: VarTrait[A] with Signal[A]
-  type EventSource[A] <: EventSourceTrait[A] with Event[A]
+
+trait ReactiveLibrary {
+  // deliberately make Event and Signal into volatile types
+  // to be able to override them
+  protected type VolatileHelper
+
+  type Event[+A] <: EventTrait[A] with VolatileHelper
+  type Signal[+A] <: SignalTrait[A] with VolatileHelper
+
+  type Var[A] <: Signal[A] with VarTrait[A]
+  type EventSource[A] <: Event[A] with EventSourceTrait[A]
 
   implicit val eventApplicative: EventOperationsTrait[Event]
   implicit val signalApplicative: SignalOperationsTrait[Signal]

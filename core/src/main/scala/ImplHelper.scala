@@ -18,3 +18,8 @@ trait DefaultConstObject {
     override def apply[A](value: A): Var[A] = Var(value)
   }
 }
+
+trait ReactiveLibraryImplementationHelper {
+  self: ReactiveLibrary =>
+  override protected type VolatileHelper = Any
+}

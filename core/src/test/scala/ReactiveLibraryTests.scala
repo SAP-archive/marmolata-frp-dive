@@ -544,6 +544,17 @@ trait ReactLibraryTests {
       l shouldEqual List(17, 30, 17)
     }
 
+    it should "be able to use eventsource as refinement of event (i. e. there shouldn't be any issues with volatility)" in {
+      trait A {
+        val x: Event[Int]
+        val y: Signal[Int]
+      }
+
+      object B extends A {
+        val x: EventSource[Int] = ???
+        val y: Var[Int] = ???
+      }
+    }
   }
 
   def runPropertyTests: Unit = {

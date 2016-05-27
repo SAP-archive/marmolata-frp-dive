@@ -4,13 +4,13 @@ import cats.{FlatMap, Monad}
 import org.scalacheck.Prop.Exception
 import pl.metastack.metarx
 import pl.metastack.metarx.{Cancelable => MetaCancelable, _}
-import react.impls.helper.{DefaultConstObject, NonCancelable}
+import react.impls.helper.{ReactiveLibraryImplementationHelper, DefaultConstObject, NonCancelable}
 import react.ReactiveLibrary
 import _root_.react.ReactiveLibrary._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait MetaRxImpl extends ReactiveLibrary with DefaultConstObject {
+trait MetaRxImpl extends ReactiveLibrary with DefaultConstObject with ReactiveLibraryImplementationHelper {
   metaRxImpl =>
 
   def implementationName = "MetaRxImpl"

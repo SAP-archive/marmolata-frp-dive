@@ -4,7 +4,7 @@ import cats.{FlatMap, Monad}
 import com.sun.javafx.collections.ObservableListWrapper
 import react.ReactiveLibrary
 import react.ReactiveLibrary._
-import react.impls.helper.{DefaultConstObject, NonCancelable}
+import react.impls.helper.{ReactiveLibraryImplementationHelper, DefaultConstObject, NonCancelable}
 import rx._
 import rx.async.FutureCombinators
 
@@ -32,7 +32,7 @@ case class CompareUnequal[+A](get: A) {
   def map[B](f: A => B) = CompareUnequal(f(get))
 }
 
-trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject {
+trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject with ReactiveLibraryImplementationHelper {
   scalaRxImpl =>
   def implementationName = "Scala.Rx wrapper"
 

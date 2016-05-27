@@ -10,13 +10,13 @@ import react.ReactiveLibrary._
 import monix.reactive.{Observable => MonixObservable}
 
 import monix.execution.Scheduler.Implicits.global
-import react.impls.helper.{DefaultConstObject, NonCancelable}
+import react.impls.helper.{ReactiveLibraryImplementationHelper, DefaultConstObject, NonCancelable}
 
 import scala.collection.mutable.MutableList
 import scala.concurrent.{ExecutionContext, Future}
 
 
-trait MonixImpl extends ReactiveLibrary with DefaultConstObject {
+trait MonixImpl extends ReactiveLibrary with DefaultConstObject with ReactiveLibraryImplementationHelper {
   class Event[+A](private[MonixImpl] val wrapped: MonixObservable[A]) extends EventTrait[A] {
     type F[+X] = Event[X]
 
