@@ -6,7 +6,8 @@ import react.LibTests.ReactLibraryTests
 
 import scala.concurrent.Future
 
-trait TestImplementation extends FlatSpec with Matchers with ReactLibraryTests {
+trait TestImplementation extends Matchers with ReactLibraryTests {
+  self: FlatSpec =>
   reactLibrary.implementationName should behave like runLibraryTests
   it should behave like runPropertyTests
 }

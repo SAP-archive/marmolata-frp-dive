@@ -6,6 +6,7 @@ import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Succeeded, FlatSpec, AsyncFlatSpec, Matchers}
 import react.{ReactiveLibraryUsage, ReactiveLibrary}
 import react.ReactiveLibrary.{Cancelable, Observable}
+import scala.annotation.tailrec
 import scala.collection.mutable.MutableList
 import scala.concurrent.{ExecutionContext, Promise, Future}
 import scala.concurrent.duration.FiniteDuration
@@ -28,9 +29,9 @@ class SimpleExecutionContext extends ExecutionContext {
   private var currentlyExecuting = false
 
   def execute(runnable: Runnable): Unit = {
-    if (currentlyExecuting)
-      runnable.run()
-    else
+    //if (currentlyExecuting)
+    //  runnable.run()
+    //else
       queue = queue :+ (runnable, "")
   }
 
@@ -49,7 +50,7 @@ class SimpleExecutionContext extends ExecutionContext {
     println(cause)
   }
 
-  def runQueue(name: String = "", recursive: Int = 0): Unit = {
+  final def runQueue(name: String = "", recursive: Int = 0): Boolean = {
     println(s"run queue ${name} with ${queue.length} items ${recursive}")
     val theQueue = queue
     currentlyExecuting = true
@@ -66,10 +67,16 @@ class SimpleExecutionContext extends ExecutionContext {
     }
 
 
-    if (!queue.isEmpty && recursive < 50)
-      runQueue(name, recursive + 1)
-    if (recursive == 0)
-      currentlyExecuting = false
+    try {
+      if (!queue.isEmpty && recursive < 50)
+        runQueue(name, recursive + 1)
+      else
+        queue.isEmpty
+    }
+    finally {
+      if (recursive == 0)
+        currentlyExecuting = false
+    }
   }
 }
 
@@ -93,6 +100,32 @@ trait ReactLibraryTests {
     import reactLibrary._
     import reactLibrary.syntax._
     import ReactLibraryTests._
+
+    it should "not trigger this strange flatMap bug ;;;;" in {
+      implicit val queue = new SimpleExecutionContext()
+      val e = Event[Int]
+      val p = Promise[Int]
+      val f = p.future.toEvent
+
+
+      import unsafeImplicits.eventApplicative
+      var number: Int = 0
+      val r = e.flatMap {
+        i =>
+          number += 1
+          p.future.toEvent
+      }
+      val l = collectValues(r)
+
+
+      e emit 0
+      p success 10
+      queue.runQueue("q2")
+      number should be < 20
+
+      l shouldEqual List(10)
+    }
+
 
     it should "not directly trigger its value when used as event, but directly trigger as variable" in {
       val var1 = Var(5)
@@ -243,31 +276,31 @@ trait ReactLibraryTests {
 
       val l = collectValues(w)
 
-      queue.runQueue("g0")
+      queue.runQueue("g0") shouldEqual true
       v.update(1)
-      queue.runQueue("g1")
+      queue.runQueue("g1") shouldEqual true
 
       v.update(2)
-      queue.runQueue("g2")
+      queue.runQueue("g2") shouldEqual true
 
       v.update(3)
-      queue.runQueue("g3")
+      queue.runQueue("g3") shouldEqual true
 
       promises(1) success 1
-      queue.runQueue("g4")
+      queue.runQueue("g4") shouldEqual true
 
 
       promises(3) success 3
-      queue.runQueue("g5")
+      queue.runQueue("g5") shouldEqual true
 
 
       promises(2) success 2
-      queue.runQueue("g6")
+      queue.runQueue("g6") shouldEqual true
 
       v.update(4)
-      promises(4) success 4
+      promises(4) success 4 shouldEqual true
 
-      queue.runQueue("handle")
+    queue.runQueue("handle")
 
       l shouldEqual List(3, 4)
     }

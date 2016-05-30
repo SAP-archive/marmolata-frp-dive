@@ -27,7 +27,11 @@ class ObsWrapper(obs: Obs, releaseObs: ReleaseObs) extends Cancelable {
 
 //TODO: check if something like that exists in the standard library
 case class CompareUnequal[+A](get: A) {
-  override def equals(obj: scala.Any): Boolean = false
+  override def equals(obj: scala.Any): Boolean =
+    obj match {
+      case x: AnyRef => eq(x)
+      case _ => false
+    }
 
   def map[B](f: A => B) = CompareUnequal(f(get))
 }
@@ -169,12 +173,29 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject with ReactiveL
         case Some(CompareUnequal(x)) => f(x).wrapped
         case None => Rx(None)
       }
-      new Event(fa.wrapped.flatMap(wrappedF).reduce { (x, y) =>
+
+      // We have to cache the wrapped Rx
+      def reduceFun(u1: (Int, Option[CompareUnequal[A]]), u2: (Int, Option[CompareUnequal[A]])): (Int, Option[CompareUnequal[A]]) =
+        (u1._1 + 1, u2._2)
+      var current: (Int, Rx[Option[CompareUnequal[B]]]) = (-1, Rx { None })
+
+      def wrappedF2(a: (Int, Option[CompareUnequal[A]])) =
+        if (a._1 == current._1)
+          current._2
+        else {
+          val result = wrappedF(a._2)
+          current = (a._1, result)
+          result
+        }
+
+      val r = fa.wrapped.map(x => (0, x)).reduce(reduceFun).flatMap(wrappedF2).reduce { (x, y) =>
         (x, y) match {
           case (_, Some(z)) => Some(z)
           case (y, None) => y
         }
-      })
+      }
+
+      new Event(r)
     }
   }
 
