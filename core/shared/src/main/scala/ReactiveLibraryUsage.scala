@@ -25,7 +25,7 @@ trait ReactiveLibraryUsage {
     def toSignal(init: A) = self.toSignal(init, event)
     def toSignal: Signal[Option[A]] = event.map(Some(_): Option[A]).toSignal(None)
     def triggerWhen[B, C](s: Signal[B], f: (A, B) => C): Event[C] = self.triggerWhen(s, event, (a: B, b: A) => f(b, a))
-    def or(e: Event[Nothing]): Event[Unit] = {
+    def or(e: Event[Any]): Event[Unit] = {
       implicitly[Mergeable[Event]].merge(event.map(Function.const(Unit)), e.map(Function.const(Unit)))
     }
   }
