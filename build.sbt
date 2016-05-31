@@ -1,11 +1,16 @@
 import sbt.Keys._
 
+lazy val nexusPublishingSettings = Seq(
+  publishMavenStyle := true,
+  publishArtifact in Test := false,
+  publishTo := Some("SAP Nexus" at "http://nexus.wdf.sap.corp:8081/nexus/content/repositories/deploy.snapshots/")
+)
 
 lazy val commonSettings = Seq(
-  version := "0.1.23",
+  version := "0.1.26-SNAPSHOT",
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
-  scalaVersion := "2.11.8")
+  scalaVersion := "2.11.8") ++ nexusPublishingSettings
 
 lazy val jsSettings = commonSettings ++ Seq(
   libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test",
