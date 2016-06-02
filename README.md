@@ -27,7 +27,7 @@ This project was heavily influenced by the following projects and papers:
 
 - [Elm: Concurrent FRP for Functional GUIs](http://elm-lang.org/papers/concurrent-frp.pdf): This paper was further evidence that it's a bad idea to provide a monadic interface for Signals/Events. The space leaks that arise when using it wrongly (i.e. nearly every use case) are thus avoided. Instead of Scala.Rx's approach to take care of these space leaks by special macros, we thus take care of it by simply not allowing it. Elm goes to even more length with this approach by only allowing Signals to be generated statically, i.e. at compile time. The whole graph of Events is thus available at compile time and can be optimized etc. We don't go this far with our approach - it's also probably also not possible easily with Scala - but see this as the best use case to produce Signals/Events early on and don't change them anymore afterwards.
 
-- Cats: Although we decided not to expose a monadic interface for Signals, Signals are still Functors and Applicatives naturally, so it was useful to use cats, a library which brings these concepts to Scala. By this, we can use functions like `map` and `product` on Signals and at least `map` on Events (Events are currently also Applicatives, but probably they shouldn't be). 
+- [Cats](http://typelevel.org/cats/): Although we decided not to expose a monadic interface for Signals, Signals are still Functors and Applicatives naturally, so it was useful to use cats, a library which brings these concepts to Scala. By this, we can use functions like `map` and `product` on Signals and at least `map` on Events (Events are currently also Applicatives, but probably they shouldn't be). 
 
 ReactiveComparisions
 =
