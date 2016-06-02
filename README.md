@@ -3,6 +3,15 @@ Reactive Library For Scala and Scala.js
 
 This library provides reactive programming primitives. Currently, this gives the programmer an API with a clear semantics which is then wrapped to other reactive libraries. Currently, the scalarx backend is the best provided backend. An other possibility is the metarx backend. The monix backend is only a proof-of-concept and doesn't work at all.
 
+Usage
+-----
+You can look at the tests (core/shared/src/test/scala/ReactiveLibraryTests.scala) for easy usages.
+
+This library provides the basic concepts `Event` and `Signal` as described in Scala.React.
+
+- Signal[A] is a time-varying value, i.e. it can be seen as a function Time -> Signal which is only changed at discrete times (We don't support continuously changed Signals). 
+- Event[A] is a function `f: Time -> Option[A]` which produces signals at distinct times (i.e. for every finite interval I, f^(-1)({Some(x) | x in A}) subset I is finite. Producing multiple events at a single point in time is probably undefined behaviour (is this even possible?)
+
 Influences
 ----------
 
