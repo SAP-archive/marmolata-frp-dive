@@ -28,6 +28,11 @@ trait ReactiveLibraryUsage {
     def or(e: Event[Any]): Event[Unit] = {
       implicitly[Mergeable[Event]].merge(event.map(Function.const(Unit)), e.map(Function.const(Unit)))
     }
+
+    def mergeEither[B](e: Event[B]): Event[Either[A, B]] = {
+
+      implicitly[Mergeable[Event]].merge(event.map(Left(_)), event.map(Right(_)))
+    }
   }
 
   class ReassignableSignal[A](private[ReactiveLibraryUsage] val constr: Var[Signal[A]]) {
