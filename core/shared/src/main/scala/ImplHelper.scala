@@ -14,7 +14,7 @@ object NonCancelable extends Cancelable {
 trait DefaultConstObject {
   self: ReactiveLibrary =>
 
-  final object Const extends ConstCompanionObject[Var] {
+  final object Const extends ConstCompanionObject[Signal] {
     override def apply[A](value: A): Var[A] = Var(value)
   }
 }

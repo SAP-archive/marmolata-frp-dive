@@ -93,7 +93,7 @@ trait ReactiveLibrary {
 
   val Var: VarCompanionObject[Var]
   val Event: EventCompanionObject[Event, EventSource]
-  val Const: ConstCompanionObject[Var]
+  val Const: ConstCompanionObject[Signal]
 
   protected [react] def toSignal[A] (init: A, event: Event[A]): Signal[A]
   protected [react] def toEvent[A] (signal: Signal[A]): Event[A]

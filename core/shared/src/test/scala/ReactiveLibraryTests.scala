@@ -298,9 +298,9 @@ trait ReactLibraryTests {
       queue.runQueue("g6") shouldEqual true
 
       v.update(4)
-      promises(4) success 4 shouldEqual true
+      promises(4) success 4
 
-    queue.runQueue("handle")
+      queue.runQueue("handle") shouldEqual true
 
       l shouldEqual List(3, 4)
     }
@@ -462,7 +462,7 @@ trait ReactLibraryTests {
       v := 7
       v := 8
 
-      v := w
+      v subscribe w
       w := 10
       w := 13
       v := 13
@@ -478,17 +478,17 @@ trait ReactLibraryTests {
       val z1 = Event[Int]
       val z2 = Event[Int]
 
-      v := z1
+      v subscribe z1
       z1 emit 3
       z1 emit 5
 
-      v := z2
+      v subscribe z2
       z2 emit 5
       z1 emit 17
       z1 emit 29
       z2 emit 33
 
-      v := z1
+      v subscribe z1
       z1 emit 100
       z2 emit 1000
 
@@ -544,7 +544,7 @@ trait ReactLibraryTests {
     it should "use the correct semantics of triggerWhen" in {
       val e = Event[Int]
       val v = Var(7)
-      val l = collectValues(e.triggerWhen[Int, Int](v, _ + _))
+      val l = collectValues(v.triggerWhen(e, (x: Int, y: Int) => x + y))
 
       e emit 10
       v := 17
@@ -558,7 +558,7 @@ trait ReactLibraryTests {
       val ev = Var(13)
       val e = ev.toEvent
       val v = Var(7)
-      val l = collectValues(e.triggerWhen[Int, Int](v, _ + _))
+      val l = collectValues(v.triggerWhen(e, (x: Int, y: Int) => x + y))
 
       ev := 10
       v := 17
