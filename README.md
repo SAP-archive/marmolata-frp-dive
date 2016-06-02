@@ -12,6 +12,8 @@ This library provides the basic concepts `Event` and `Signal` as described in Sc
 - Signal[A] is a time-varying value, i.e. it can be seen as a function Time -> Signal which is only changed at discrete times (We don't support continuously changed Signals). 
 - Event[A] is a function `f: Time -> Option[A]` which produces signals at distinct times (i.e. for every finite interval I, f^(-1)({Some(x) | x in A}) subset I is finite. Producing multiple events at a single point in time is probably undefined behaviour (is this even possible?)
 
+We can use functions like `map`, `produce` to generate new Signals and Events out of old ones. When we want to generate side effects, `observe` should be used (please don't use map when doing a side effect, it's not guaranteed to be executed only once!).
+
 Influences
 ----------
 
