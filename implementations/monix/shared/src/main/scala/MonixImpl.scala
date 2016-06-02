@@ -108,7 +108,7 @@ trait MonixImpl extends ReactiveLibrary with DefaultConstObject with ReactiveLib
     override def emit(value: A): Unit = ???
   }
 
-  object Event extends EventCompanionObjectImplementationHelper {
+  object EventSource extends EventSourceCompanionObjectImplementationHelper {
     override def apply[A](): EventSource[A] = ???
   }
 

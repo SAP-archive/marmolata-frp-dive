@@ -1,7 +1,7 @@
 package react.impls.helper
 
 import react.ReactiveLibrary
-import react.ReactiveLibrary.{EventCompanionObject, ConstCompanionObject, Cancelable}
+import react.ReactiveLibrary.{EventSourceCompanionObject, ConstCompanionObject, Cancelable}
 
 
 object NonCancelable extends Cancelable {
@@ -23,7 +23,7 @@ trait ReactiveLibraryImplementationHelper {
   self: ReactiveLibrary =>
   override protected type VolatileHelper = Any
 
-  trait EventCompanionObjectImplementationHelper extends EventCompanionObject[Event, EventSource] {
+  trait EventSourceCompanionObjectImplementationHelper extends EventSourceCompanionObject[Event, EventSource] {
     def Never: Event[Nothing] = apply[Nothing]
   }
 

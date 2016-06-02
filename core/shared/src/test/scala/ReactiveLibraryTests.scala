@@ -103,7 +103,7 @@ trait ReactLibraryTests {
 
     it should "not trigger this strange flatMap bug ;;;;" in {
       implicit val queue = new SimpleExecutionContext()
-      val e = Event[Int]
+      val e = EventSource[Int]
       val p = Promise[Int]
       val f = p.future.toEvent
 
@@ -307,7 +307,7 @@ trait ReactLibraryTests {
 
     it should "not trigger this strange flatMap bug" in {
       implicit val queue = new SimpleExecutionContext()
-      val v = Event[Int]
+      val v = EventSource[Int]
       val p = Promise[Int]
       import unsafeImplicits.eventApplicative
       val r = v.flatMap { i => p.future.toEvent }
@@ -322,7 +322,7 @@ trait ReactLibraryTests {
 
     it should "get times when clicked" in {
       val time = Var(0)
-      val click = Event[Unit]()
+      val click = EventSource[Unit]()
 
       val result = Var(time.now)
       click.observe { _ => result.update(time.now) }
@@ -417,8 +417,8 @@ trait ReactLibraryTests {
     }
 
     it should "zip together events only if there's a previous value" in {
-      val v1 = Event[Int]()
-      val v2 = Event[Int]()
+      val v1 = EventSource[Int]()
+      val v2 = EventSource[Int]()
       val l = collectValues(v1 product v2)
 
       v1 emit 7
@@ -475,8 +475,8 @@ trait ReactLibraryTests {
       val v = ReassignableEvent[Int]
       val l = collectValues(v)
 
-      val z1 = Event[Int]
-      val z2 = Event[Int]
+      val z1 = EventSource[Int]
+      val z2 = EventSource[Int]
 
       v subscribe z1
       z1 emit 3
@@ -496,7 +496,7 @@ trait ReactLibraryTests {
     }
 
     it should "understand map" in {
-      val v = Event[Int]
+      val v = EventSource[Int]
       val w = v.map(_ * 3)
       val l = collectValues(w)
 
@@ -508,7 +508,7 @@ trait ReactLibraryTests {
     }
 
     it should "play well with merges" in {
-      val e = Event[List[Either[Int, Int]]]
+      val e = EventSource[List[Either[Int, Int]]]
 
       val e1 = e map {
         _.collectFirst { case Left(x) => x }
@@ -531,7 +531,7 @@ trait ReactLibraryTests {
     }
 
     it should "also emit the identical element" in {
-      val e = Event[Unit]
+      val e = EventSource[Unit]
       val l = collectValues(e)
       val v = ()
       e emit v
@@ -542,7 +542,7 @@ trait ReactLibraryTests {
     }
 
     it should "use the correct semantics of triggerWhen" in {
-      val e = Event[Int]
+      val e = EventSource[Int]
       val v = Var(7)
       val l = collectValues(v.triggerWhen(e, (x: Int, y: Int) => x + y))
 
@@ -581,8 +581,8 @@ trait ReactLibraryTests {
     }
 
     it should "Never behave as neutral element" in {
-      val e1 = Event[Int]
-      val e2 = Event.Never
+      val e1 = EventSource[Int]
+      val e2 = EventSource.Never
       val e3 = e1 merge e2
 
       val l1 = collectValues(e1)

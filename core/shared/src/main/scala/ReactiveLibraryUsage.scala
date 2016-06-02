@@ -14,7 +14,7 @@ trait ReactiveLibraryUsage {
   implicit final class FutureExtensions[A](f: Future[A]) {
     def toEvent(implicit ec: ExecutionContext): Event[A] = futureToEvent(f)
   }
-  
+
   implicit final class SignalExtensions[A](s: Signal[A]) {
     def toEvent: Event[A] = self.toEvent(s)
     def triggerWhen[B, C](e: Event[B], f: (A, B) => C): Event[C] = self.triggerWhen(s, e, f)
@@ -46,7 +46,7 @@ trait ReactiveLibraryUsage {
   }
 
   object ReassignableEvent {
-    def apply[A](): ReassignableEvent[A] = new ReassignableEvent(Var(Event()))
+    def apply[A](): ReassignableEvent[A] = new ReassignableEvent(Var(EventSource()))
   }
 
   implicit class ListCombinators[T](seq: List[Signal[T]]) {
