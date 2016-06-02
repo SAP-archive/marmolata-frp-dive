@@ -1,4 +1,25 @@
+Reactive Library For Scala and Scala.js
+====
+
+This library provides reactive programming primitives. Currently, this gives the programmer an API with a clear semantics which is then wrapped to other reactive libraries. Currently, the scalarx backend is the best provided backend. An other possibility is the metarx backend. The monix backend is only a proof-of-concept and doesn't work at all.
+
+Influences
+----------
+
+This project was heavily influenced by the following projects and papers:
+
+- MetaRx: The reactive library we used previously. This provides a delta-based implementation to reactive primitives which e.g. gives support for efficient maps because only the changes are propagated (I guess). This isn't really our use-case though (and structural sharing of Maps can still be used even without the reactive library supporting it). Indeed, we had problems with unclear separation of events and signals, ReadStateChannel always becoming a ReadChannel and no variance annotations at either ReadChannel/ReadStateChannel etc.
+
+- Scala.Rx: This project only provides Signals and no Events. Otherwise, it looks quite good. In this library, we go through some length to simulate Events with these Signals. This project also handles Space-leak problems which arise naturally when using flatMap by macro-expressions which keep track of owners of Signals and destroy them in the right place. This has not been done in this length by this project.
+
+- Scala.React: This paper was the motivation for this library. A clear separation between Events and Signals was adopted. The imperative notion of how to generate these Events/Signals also looks promising, but has not yet been incorporated. It may be possible to do this with monads (i.e. for-notation) instead of CPS.
+
+- Elm paper: This paper was further evidence that it's a bad idea to provide a monadic interface for Signals/Events. The space leaks that arise when using it wrongly (i.e. nearly every use case) are thus avoided. Instead of Scala.Rx's approach to take care of these space leaks by special macros, we thus take care of it by simply not allowing it. Elm goes to even more length with this approach by only allowing Signals to be generated statically, i.e. at compile time. The whole graph of Events is thus available at compile time and can be optimized etc. We don't go this far with our approach - it's also probably not possible with Scala - but see this as the best use case to produce Signals/Events early on and don't change them anymore afterwards.
+
 ReactiveComparisions
+=
+
+This project started after a handful of libraries was looked at and it was decided that none of them exactly fits our needs. For historical reasons, the comparision is shown here:
 
 Comparision of Reactive Scala.js Libraries
 
