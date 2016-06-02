@@ -71,7 +71,8 @@ import ReactiveLibrary._
 
 trait ReactiveLibrary {
   // deliberately make Event and Signal into volatile types
-  // to be able to override them
+  // to be able to override them,
+  // see also http://stackoverflow.com/questions/37493183/how-to-make-scala-type-volatile-on-purpose
   protected type VolatileHelper
 
   type Event[+A] <: EventTrait[A] with VolatileHelper
