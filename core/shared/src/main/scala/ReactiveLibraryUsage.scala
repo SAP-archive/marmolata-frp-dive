@@ -31,7 +31,7 @@ trait ReactiveLibraryUsage {
 
     def mergeEither[B](e: Event[B]): Event[Either[A, B]] = {
 
-      implicitly[Mergeable[Event]].merge(event.map(Left(_)), event.map(Right(_)))
+      implicitly[Mergeable[Event]].merge(event.map(Left(_)), e.map(Right(_)))
     }
   }
 
