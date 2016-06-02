@@ -51,6 +51,9 @@ object ReactiveLibrary {
 
   trait EventSourceTrait[A] {
     def emit(value: A): Unit
+
+    @inline
+    final def :=(value: A) = emit(value)
   }
 
   trait Cancelable {
