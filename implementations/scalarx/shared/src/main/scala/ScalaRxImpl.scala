@@ -4,7 +4,7 @@ import cats.{FlatMap, Monad}
 import com.sun.javafx.collections.ObservableListWrapper
 import react.ReactiveLibrary
 import react.ReactiveLibrary._
-import react.impls.helper.{ReactiveLibraryImplementationHelper, DefaultConstObject, NonCancelable}
+import react.impls.helper.{DefaultEventObject, ReactiveLibraryImplementationHelper, DefaultSignalObject, NonCancelable}
 import rx._
 import rx.async.FutureCombinators
 
@@ -36,7 +36,7 @@ case class CompareUnequal[+A](get: A) {
   def map[B](f: A => B) = CompareUnequal(f(get))
 }
 
-trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject with ReactiveLibraryImplementationHelper {
+trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEventObject with ReactiveLibraryImplementationHelper {
   scalaRxImpl =>
   def implementationName = "Scala.Rx wrapper"
 
@@ -290,7 +290,7 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultConstObject with ReactiveL
     def emit(value: A): Unit = _wrapped.update(Some(CompareUnequal(value)))
   }
 
-  object EventSource extends EventSourceCompanionObjectImplementationHelper {
+  object EventSource extends EventSourceCompanionObject[Event, EventSource] {
     def apply[A](): EventSource[A] = new EventSource(rx.Var(None))
   }
 

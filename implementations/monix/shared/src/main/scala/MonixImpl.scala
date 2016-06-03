@@ -10,13 +10,13 @@ import react.ReactiveLibrary._
 import monix.reactive.{Observable => MonixObservable}
 
 import monix.execution.Scheduler.Implicits.global
-import react.impls.helper.{ReactiveLibraryImplementationHelper, DefaultConstObject, NonCancelable}
+import react.impls.helper.{DefaultEventObject, ReactiveLibraryImplementationHelper, DefaultSignalObject, NonCancelable}
 
 import scala.collection.mutable.MutableList
 import scala.concurrent.{ExecutionContext, Future}
 
 
-trait MonixImpl extends ReactiveLibrary with DefaultConstObject with ReactiveLibraryImplementationHelper {
+trait MonixImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEventObject with ReactiveLibraryImplementationHelper {
   class Event[+A](private[MonixImpl] val wrapped: MonixObservable[A]) extends EventTrait[A] {
     type F[+X] = Event[X]
 
@@ -108,7 +108,7 @@ trait MonixImpl extends ReactiveLibrary with DefaultConstObject with ReactiveLib
     override def emit(value: A): Unit = ???
   }
 
-  object EventSource extends EventSourceCompanionObjectImplementationHelper {
+  object EventSource extends EventSourceCompanionObject[Event, EventSource] {
     override def apply[A](): EventSource[A] = ???
   }
 

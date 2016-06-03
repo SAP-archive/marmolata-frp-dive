@@ -37,13 +37,13 @@ trait ReactiveLibraryUsage {
 
   class ReassignableVar[A](private[ReactiveLibraryUsage] val constr: Var[Signal[A]]) {
     def subscribe(p: Signal[A]) = constr := p
-    def := (p: A) = constr := Const(p)
+    def := (p: A) = constr := Signal.Const(p)
   }
 
 
   object ReassignableVar {
     def apply[A](init: Signal[A]) = new ReassignableVar(Var(init))
-    def apply[A](init: A) = new ReassignableVar[A](Var(Const(init)))
+    def apply[A](init: A) = new ReassignableVar[A](Var(Signal.Const(init)))
   }
 
   class ReassignableEvent[A](private[ReactiveLibraryUsage] val constr: Var[Event[A]]) {
@@ -95,16 +95,16 @@ trait ReactiveLibraryUsage {
 
   trait EventSyntax {
     implicit def eventSourceIsFunctor[A](v: EventSource[A]): Functor.Ops[Event, A] = v: Event[A]
-    implicit def eventSourceIsApply[A](v: EventSource[A]): Apply.Ops[Event, A] = v: Event[A]
+    implicit def eventSourceIsApply[A](v: EventSource[A])(implicit eventIsApply: Apply[Event]): Apply.Ops[Event, A] = v: Event[A]
     implicit def eventSourceIsMonad[A](v: EventSource[A])(implicit eventIsMonad: FlatMap[Event]): FlatMapOps[Event, A] = v: Event[A]
-    implicit def eventSourceIsCartesian[A](v: EventSource[A]): Cartesian.Ops[Event, A] = v: Event[A]
+    implicit def eventSourceIsCartesian[A](v: EventSource[A])(implicit eventIsCartesian: Cartesian[Event]): Cartesian.Ops[Event, A] = v: Event[A]
   }
 
   trait ReassignableEventSyntax {
     implicit def reassignableEventSourceIsFunctor[A](v: ReassignableEvent[A]): Functor.Ops[Event, A] = v: Event[A]
-    implicit def reassignableEventSourceIsApply[A](v: ReassignableEvent[A]): Apply.Ops[Event, A] = v: Event[A]
+    implicit def reassignableEventSourceIsApply[A](v: ReassignableEvent[A])(implicit eventIsApply: Apply[Event]): Apply.Ops[Event, A] = v: Event[A]
     implicit def reassignableEventSourceIsMonad[A](v: ReassignableEvent[A])(implicit eventIsMonad: FlatMap[Event]): FlatMapOps[Event, A] = v: Event[A]
-    implicit def reassignableEventSourceIsCartesian[A](v: ReassignableEvent[A]): Cartesian.Ops[Event, A] = v: Event[A]
+    implicit def reassignableEventSourceIsCartesian[A](v: ReassignableEvent[A])(implicit eventIsCartesian: Cartesian[Event]): Cartesian.Ops[Event, A] = v: Event[A]
   }
 
   object syntax extends AllSyntax with VarSyntax with EventSyntax with ReassignableEventSyntax with ReassignableVarSyntax with FilterableSyntax {

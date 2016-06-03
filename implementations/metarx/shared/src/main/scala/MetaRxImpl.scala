@@ -4,13 +4,13 @@ import cats.{FlatMap, Monad}
 import org.scalacheck.Prop.Exception
 import pl.metastack.metarx
 import pl.metastack.metarx.{Cancelable => MetaCancelable, _}
-import react.impls.helper.{ReactiveLibraryImplementationHelper, DefaultConstObject, NonCancelable}
+import react.impls.helper.{DefaultEventObject, ReactiveLibraryImplementationHelper, DefaultSignalObject, NonCancelable}
 import react.ReactiveLibrary
 import _root_.react.ReactiveLibrary._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait MetaRxImpl extends ReactiveLibrary with DefaultConstObject with ReactiveLibraryImplementationHelper {
+trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEventObject with ReactiveLibraryImplementationHelper {
   metaRxImpl =>
 
   def implementationName = "MetaRxImpl"
@@ -112,7 +112,7 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultConstObject with ReactiveLi
     def emit(value: A): Unit = _wrapped := value
   }
 
-  object EventSource extends EventSourceCompanionObjectImplementationHelper {
+  object EventSource extends EventSourceCompanionObject[Event, EventSource] {
     def apply[A](): EventSource[A] = new EventSource(metarx.Channel[A])
   }
 

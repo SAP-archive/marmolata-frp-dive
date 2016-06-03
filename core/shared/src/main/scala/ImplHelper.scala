@@ -1,7 +1,7 @@
 package react.impls.helper
 
 import react.ReactiveLibrary
-import react.ReactiveLibrary.{EventSourceCompanionObject, ConstCompanionObject, Cancelable}
+import react.ReactiveLibrary.{SignalCompanionObject, EventCompanionObject, EventSourceCompanionObject, Cancelable}
 
 
 object NonCancelable extends Cancelable {
@@ -11,20 +11,23 @@ object NonCancelable extends Cancelable {
   implicit def unitToCancelable(x: Unit): Cancelable = NonCancelable
 }
 
-trait DefaultConstObject {
+trait DefaultSignalObject {
   self: ReactiveLibrary =>
 
-  final object Const extends ConstCompanionObject[Signal] {
-    override def apply[A](value: A): Var[A] = Var(value)
+  final object Signal extends SignalCompanionObject[Signal] {
+    override def Const[A](value: A): Signal[A] = Var(value)
+  }
+}
+
+trait DefaultEventObject {
+  self: ReactiveLibrary =>
+
+  final object Event extends EventCompanionObject[Event] {
+    override def Never: Event[Nothing] = EventSource[Nothing]
   }
 }
 
 trait ReactiveLibraryImplementationHelper {
   self: ReactiveLibrary =>
   override protected type VolatileHelper = Any
-
-  trait EventSourceCompanionObjectImplementationHelper extends EventSourceCompanionObject[Event, EventSource] {
-    def Never: Event[Nothing] = apply[Nothing]
-  }
-
 }

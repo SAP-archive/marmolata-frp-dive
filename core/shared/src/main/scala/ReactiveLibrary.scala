@@ -24,8 +24,15 @@ object ReactiveLibrary {
     def apply[A](init: A): Var[A]
   }
 
+  trait SignalCompanionObject[Signal[_]] {
+    def Const[A](value: A): Signal[A]
+  }
+
   trait EventSourceCompanionObject[Event[_], NativeEvent[_]] {
     def apply[A](): NativeEvent[A]
+  }
+
+  trait EventCompanionObject[Event[_]] {
     def Never: Event[Nothing]
   }
 
@@ -39,7 +46,7 @@ object ReactiveLibrary {
 
   trait EventTrait[+A] extends Observable[A]
 
-  trait EventOperationsTrait[F[+_]] extends Apply[F] with Filterable[F] with Mergeable[F]
+  trait EventOperationsTrait[F[+_]] extends Functor[F] with Filterable[F] with Mergeable[F]
   trait SignalOperationsTrait[F[+_]] extends Applicative[F]
 
   trait VarTrait[A] extends SignalTrait[A] {
@@ -58,14 +65,6 @@ object ReactiveLibrary {
 
   trait Cancelable {
     def kill(): Unit
-  }
-
-  trait ConstCompanionObject[Signal[_]] {
-    def apply[A](value: A): Signal[A]
-  }
-
-  trait SubscriptionSignal {
-
   }
 }
 
@@ -97,7 +96,9 @@ trait ReactiveLibrary {
 
   val Var: VarCompanionObject[Var]
   val EventSource: EventSourceCompanionObject[Event, EventSource]
-  val Const: ConstCompanionObject[Signal]
+
+  val Signal: SignalCompanionObject[Signal]
+  val Event: EventCompanionObject[Event]
 
   protected [react] def toSignal[A] (init: A, event: Event[A]): Signal[A]
   protected [react] def toEvent[A] (signal: Signal[A]): Event[A]
