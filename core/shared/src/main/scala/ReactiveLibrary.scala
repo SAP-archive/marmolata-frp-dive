@@ -7,8 +7,6 @@ import cats._
 
 import scala.language.higherKinds
 
-
-
 // TODO: think about if we want to introduce implicits for ownership
 // to get rid of events/signals when they aren't used anymore
 // this may be particularly important in flatMap where a new event/signal
