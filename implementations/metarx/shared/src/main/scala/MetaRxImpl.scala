@@ -13,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEventObject with ReactiveLibraryImplementationHelper {
   metaRxImpl =>
 
-  def implementationName = "MetaRxImpl"
+  def implementationName: String = "MetaRxImpl"
 
   case class Cancelable(wrapped: ReadChannel[Unit]) extends ReactiveLibrary.Cancelable {
     override def kill(): Unit = wrapped.dispose()

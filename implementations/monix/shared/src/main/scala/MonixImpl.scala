@@ -90,7 +90,7 @@ trait MonixImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEve
       }
     }
 
-    def update(newVal: A) = {
+    def update(newVal: A): Unit = {
       value = newVal
       subscriptions foreach { _.foreach { _.onNext(newVal) } }
     }

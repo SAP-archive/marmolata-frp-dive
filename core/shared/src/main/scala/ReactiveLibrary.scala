@@ -59,7 +59,7 @@ object ReactiveLibrary {
     def emit(value: A): Unit
 
     @inline
-    final def :=(value: A) = emit(value)
+    final def := (value: A): Unit = emit(value)
   }
 
   trait Cancelable {
@@ -99,10 +99,10 @@ trait ReactiveLibrary {
   val Signal: SignalCompanionObject[Signal]
   val Event: EventCompanionObject[Event]
 
-  protected [react] def toSignal[A] (init: A, event: Event[A]): Signal[A]
-  protected [react] def toEvent[A] (signal: Signal[A]): Event[A]
-  protected [react] def futureToEvent[A] (f: Future[A])(implicit ec: ExecutionContext): Event[A]
-  protected [react] def triggerWhen[A, B, C] (s: Signal[A], e: Event[B], f: (A, B) => C): Event[C]
+  protected[react] def toSignal[A] (init: A, event: Event[A]): Signal[A]
+  protected[react] def toEvent[A] (signal: Signal[A]): Event[A]
+  protected[react] def futureToEvent[A] (f: Future[A])(implicit ec: ExecutionContext): Event[A]
+  protected[react] def triggerWhen[A, B, C] (s: Signal[A], e: Event[B], f: (A, B) => C): Event[C]
 
   def implementationName: String
 }

@@ -14,9 +14,9 @@ trait Mergeable[F[+_]] {
 
 trait FilterableSyntax {
   implicit class FilterableObs[F[+_], +A](value: F[A])(implicit isFilterable: Filterable[F]) {
-    def filter(cond: A => Boolean) = isFilterable.filter(value, cond)
+    def filter(cond: A => Boolean): F[A] = isFilterable.filter(value, cond)
 
-    def mapPartial[B](f: PartialFunction[A, B])(implicit isFunctor: Functor[F]) = {
+    def mapPartial[B](f: PartialFunction[A, B])(implicit isFunctor: Functor[F]): F[B] = {
       import cats.syntax.functor._
       filter(f.isDefinedAt).map(f.apply)
     }

@@ -22,7 +22,7 @@ trait ReactiveLibraryUsage {
   }
 
   implicit final class EventExtensions[A](event: Event[A]) {
-    def toSignal(init: A) = self.toSignal(init, event)
+    def toSignal(init: A): Signal[A] = self.toSignal(init, event)
     def toSignal: Signal[Option[A]] = event.map(Some(_): Option[A]).toSignal(None)
     def triggerWhen[B, C](s: Signal[B], f: (A, B) => C): Event[C] = self.triggerWhen(s, event, (a: B, b: A) => f(b, a))
     def or(e: Event[Any]): Event[Unit] = {
@@ -36,18 +36,18 @@ trait ReactiveLibraryUsage {
   }
 
   class ReassignableVar[A](private[ReactiveLibraryUsage] val constr: Var[Signal[A]]) {
-    def subscribe(p: Signal[A]) = constr := p
-    def := (p: A) = constr := Signal.Const(p)
+    def subscribe(p: Signal[A]): Unit = constr := p
+    def := (p: A): Unit = constr := Signal.Const(p)
   }
 
 
   object ReassignableVar {
-    def apply[A](init: Signal[A]) = new ReassignableVar(Var(init))
-    def apply[A](init: A) = new ReassignableVar[A](Var(Signal.Const(init)))
+    def apply[A](init: Signal[A]): ReassignableVar[A] = new ReassignableVar(Var(init))
+    def apply[A](init: A): ReassignableVar[A] = new ReassignableVar[A](Var(Signal.Const(init)))
   }
 
   class ReassignableEvent[A](private[ReactiveLibraryUsage] val constr: Var[Event[A]]) {
-    def subscribe(p: Event[A]) = constr := p
+    def subscribe(p: Event[A]): Unit = constr := p
   }
 
   object ReassignableEvent {
@@ -107,7 +107,8 @@ trait ReactiveLibraryUsage {
     implicit def reassignableEventSourceIsFunctor[A](v: ReassignableEvent[A]): Functor.Ops[Event, A] = v: Event[A]
     implicit def reassignableEventSourceIsApply[A](v: ReassignableEvent[A])(implicit eventIsApply: Apply[Event]): Apply.Ops[Event, A] = v: Event[A]
     implicit def reassignableEventSourceIsMonad[A](v: ReassignableEvent[A])(implicit eventIsMonad: FlatMap[Event]): FlatMapOps[Event, A] = v: Event[A]
-    implicit def reassignableEventSourceIsCartesian[A](v: ReassignableEvent[A])(implicit eventIsCartesian: Cartesian[Event]): Cartesian.Ops[Event, A] = v: Event[A]
+    implicit def reassignableEventSourceIsCartesian[A](v: ReassignableEvent[A])(implicit eventIsCartesian: Cartesian[Event]): Cartesian.Ops[Event, A] =
+      v: Event[A]
     implicit def reassignableEventSourceIsEventExtensions[A](v: ReassignableEvent[A]): EventExtensions[A] = v: Event[A]
   }
 
@@ -117,5 +118,4 @@ trait ReactiveLibraryUsage {
     implicit def reassignableEventIsMergeable[A](e: ReassignableEvent[A]): MergeableObs[Event, A] = new MergeableObs(e)
     implicit def reassignableEventIsFilterable[A](e: ReassignableEvent[A]): FilterableObs[Event, A] = new FilterableObs(e)
   }
-
 }

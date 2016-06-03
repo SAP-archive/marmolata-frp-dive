@@ -7,11 +7,16 @@ lazy val nexusPublishingSettings = Seq(
   credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 )
 
+// see also https://github.com/scalastyle/scalastyle-sbt-plugin/issues/47
+lazy val fixScalastyle = Seq(
+  (scalastyleSources in Compile) <++= unmanagedSourceDirectories in Compile
+)
+
 lazy val commonSettings = Seq(
   version := "0.1.31",
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
-  scalaVersion := "2.11.8") ++ nexusPublishingSettings
+  scalaVersion := "2.11.8") ++ nexusPublishingSettings ++ fixScalastyle
 
 lazy val jsSettings = commonSettings ++ Seq(
   libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.0-M15" % "test",

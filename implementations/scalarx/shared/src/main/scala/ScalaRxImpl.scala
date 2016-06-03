@@ -27,18 +27,20 @@ class ObsWrapper(obs: Obs, releaseObs: ReleaseObs) extends Cancelable {
 
 //TODO: check if something like that exists in the standard library
 case class CompareUnequal[+A](get: A) {
+  // scalastyle:off org.scalastyle.scalariform.CovariantEqualsChecker
   override def equals(obj: scala.Any): Boolean =
     obj match {
       case x: AnyRef => eq(x)
       case _ => false
     }
+  // scalastyle:on org.scalastyle.scalariform.CovariantEqualsChecker
 
-  def map[B](f: A => B) = CompareUnequal(f(get))
+  def map[B](f: A => B): CompareUnequal[B] = CompareUnequal(f(get))
 }
 
 trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEventObject with ReactiveLibraryImplementationHelper {
   scalaRxImpl =>
-  def implementationName = "Scala.Rx wrapper"
+  def implementationName: String = "Scala.Rx wrapper"
 
   // we need to hold all references to observers
   // so that they aren't garbage collected
@@ -60,57 +62,6 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultE
   class Event[+A](private[ScalaRxImpl] val wrapped: Rx[Option[CompareUnequal[A]]]) extends EventTrait[A] {
     type F[+A] = Event[A]
 
-//    override def map[B](f: A => B): Event[B] = {
-//      new Event(wrapped.map(_.map(_.map(f))))
-//    }
-//
-//    def flatMap[B](f: A => Event[B]): Event[B] = {
-//      def wrappedF(a: Option[CompareUnequal[A]]) = a match {
-//        case Some(CompareUnequal(x)) => f(x).wrapped
-//        case None => Rx(None)
-//      }
-//      new Event(wrapped.flatMap(wrappedF).reduce { (x, y) =>
-//        (x, y) match {
-//          case (_, Some(z)) => Some(z)
-//          case (y, None) => y
-//        }
-//      })
-//    }
-//
-//    def merge[B >: A](other: Event[B]): Event[B] = {
-//      val p1 = wrapped.fold((0, None): (Int, Option[CompareUnequal[A]])) { (v, current) =>
-//        (v._1 + 1, current)
-//      }
-//      val p2 = other.wrapped.fold((0, None): (Int, Option[CompareUnequal[B]])) { (v, current) =>
-//        (v._1 + 1, current)
-//      }
-//
-//      def foldFun(v: (Int, Int, Option[CompareUnequal[B]]), current: ((Int, Option[CompareUnequal[A]]), (Int, Option[CompareUnequal[B]]))) = {
-//        val result =
-//          if (v._1 < current._1._1)
-//            current._1._2
-//          else
-//            current._2._2
-//        (current._1._1, current._2._1, result)
-//      }
-//
-//      val result = Rx { (p1(), p2()) }.fold((0, 0, None): (Int, Int, Option[CompareUnequal[B]]))(foldFun)
-//      new Event(result.map(_._3))
-//    }
-//
-//    def flatMapWhichAcceptsLateEvents[B](f: (A) => Event[B]): Event[B] = {
-//      val withLast = wrapped.fold(List.empty[Option[Rx[Option[CompareUnequal[B]]]]]){ (list, next) => (next.map((z: CompareUnequal[A]) => f(z.get).wrapped) +: list) }
-//
-//      val result = Rx {
-//        withLast().collectFirst {
-//          case Some(rx) if (rx().isDefined) =>
-//            rx().get
-//        }
-//      }
-//
-//      new Event(result)
-//    }
-
     override def observe(f: A => Unit): Cancelable = {
       wrapped.triggerLater { f(wrapped.now.get.get) }
       NonCancelable
@@ -129,10 +80,12 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultE
 
       def foldFun(v: (Int, Int, Option[CompareUnequal[A]]), current: ((Int, Option[CompareUnequal[A]]), (Int, Option[CompareUnequal[A]]))) = {
         val result =
-          if (v._1 < current._1._1)
+          if (v._1 < current._1._1) {
             current._1._2
-          else
+          }
+          else {
             current._2._2
+          }
         (current._1._1, current._2._1, result)
       }
 
@@ -180,8 +133,9 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultE
       var current: (Int, Rx[Option[CompareUnequal[B]]]) = (-1, Rx { None })
 
       def wrappedF2(a: (Int, Option[CompareUnequal[A]])) =
-        if (a._1 == current._1)
+        if (a._1 == current._1) {
           current._2
+        }
         else {
           val result = wrappedF(a._2)
           current = (a._1, result)
@@ -257,10 +211,12 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultE
     }
 
     def foldFun(v: (Boolean, Int, Option[CompareUnequal[C]]), current: (A, (Int, Option[CompareUnequal[B]]))) = {
-      if (v._2 < current._2._1)
+      if (v._2 < current._2._1) {
         (true, current._2._1, current._2._2.map(x => CompareUnequal(f(current._1, x.get))))
-      else
+      }
+      else {
         (false, current._2._1, None)
+      }
     }
     val result = Rx {
       (s.wrapped(), e2())
@@ -270,11 +226,6 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultE
   }
 
   def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = {
-    // I don't really understand why we can't use the implcitly supplied execution context, but this can lead to a
-//    val ec: ExecutionContext = new ExecutionContext {
-//      override def execute(runnable: Runnable): Unit = runnable.run()
-//      override def reportFailure(cause: Throwable): Unit = println(cause)
-//    }
     new Event(f.map(x => Some(CompareUnequal(x)): Option[CompareUnequal[A]])(ec).toRx(None)(ec, implicitly[Ctx.Owner]))
   }
 
