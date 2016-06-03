@@ -455,7 +455,7 @@ trait ReactLibraryTests {
     }
 
     it should "support reassignable signals" in {
-      val v = ReassignableSignal(0)
+      val v = ReassignableVar(0)
       val l = collectValues(v)
       val w = Var(7)
 
