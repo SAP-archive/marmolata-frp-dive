@@ -84,6 +84,7 @@ trait ReactiveLibraryUsage {
     implicit def varIsApply[A](v: Var[A]): Apply.Ops[Signal, A] = v: Signal[A]
     implicit def varIsFlatMap[A](v: Var[A])(implicit signalIsMonad: FlatMap[Signal]): FlatMapOps[Signal, A] = v: Signal[A]
     implicit def varIsCartesian[A](v: Var[A]): Cartesian.Ops[Signal, A] = v: Signal[A]
+    implicit def varIsSignalExtensions[A](v: Var[A]): SignalExtensions[A] = v: Signal[A]
   }
 
   trait ReassignableVarSyntax {
@@ -99,6 +100,7 @@ trait ReactiveLibraryUsage {
     implicit def eventSourceIsApply[A](v: EventSource[A])(implicit eventIsApply: Apply[Event]): Apply.Ops[Event, A] = v: Event[A]
     implicit def eventSourceIsMonad[A](v: EventSource[A])(implicit eventIsMonad: FlatMap[Event]): FlatMapOps[Event, A] = v: Event[A]
     implicit def eventSourceIsCartesian[A](v: EventSource[A])(implicit eventIsCartesian: Cartesian[Event]): Cartesian.Ops[Event, A] = v: Event[A]
+    implicit def eventSourceIsEventExtensions[A](v: EventSource[A]): EventExtensions[A] = v: Event[A]
   }
 
   trait ReassignableEventSyntax {

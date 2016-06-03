@@ -8,7 +8,7 @@ lazy val nexusPublishingSettings = Seq(
 )
 
 lazy val commonSettings = Seq(
-  version := "0.1.30",
+  version := "0.1.31",
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8") ++ nexusPublishingSettings
