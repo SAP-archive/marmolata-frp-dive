@@ -1,7 +1,6 @@
 package react.impls
 
 import cats.{FlatMap, Monad}
-import com.sun.javafx.collections.ObservableListWrapper
 import react.ReactiveLibrary
 import react.ReactiveLibrary._
 import react.impls.helper.{DefaultEventObject, ReactiveLibraryImplementationHelper, DefaultSignalObject, NonCancelable}
