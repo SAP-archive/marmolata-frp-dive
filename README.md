@@ -3,7 +3,7 @@ Reactive Library For Scala and Scala.js
 
 [![Build Status](http://mo-a32c0f9d1.mo.sap.corp:8080/buildStatus/icon?job=ReactiveLibrary-build_dev)](http://mo-a32c0f9d1.mo.sap.corp:8080/job/ReactiveLibrary-build_dev/)
 
-[API documentation](http://mo-a32c0f9d1.mo.sap.corp:8080/job/ReactiveLibrary-build_dev/javadoc/#react.ReactiveLibrary)
+[API documentation](http://mo-a32c0f9d1.mo.sap.corp:8080/job/ReactiveLibrary-build_dev/javadoc/#react.package)
 
 This library provides reactive programming primitives. Currently, this gives the programmer an API with a clear semantics which is then wrapped to other reactive libraries. Currently, the scalarx backend is the best provided backend. An other possibility is the metarx backend. The monix backend is only a proof-of-concept and doesn't work at all.
 
