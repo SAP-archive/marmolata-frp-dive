@@ -40,7 +40,9 @@ object ReactiveLibrary {
 
   trait SignalTrait[+A] extends Observable[A] {
     def now: A
-    def get: A = now
+
+    @deprecated("TIMTOWTDIBSCINABTE: if you can, please use now, if you can't think twice", "0.32")
+    final def get: A = now
   }
 
   trait EventTrait[+A] extends Observable[A]
