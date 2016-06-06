@@ -3,4 +3,6 @@ sbt compile && sbt scalastyle
 exitcode=$?
 sbt test
 sbt doc
+sbt coverageReport
+sbt coverageAggregate
 exit $exitcode
