@@ -2,7 +2,11 @@
 sbt compile && sbt scalastyle
 exitcode=$?
 sbt doc
-sbt coverage test
+# scoverage only understands jvm
+sbt coverage scalarxJVM/test
+sbt coverage metarxJVM/test
+sbt scalarxJS/test
+sbt metarxJS/test
 sbt coverageReport
 sbt coverageAggregate
 exit $exitcode
