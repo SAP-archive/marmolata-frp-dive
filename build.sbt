@@ -13,7 +13,7 @@ lazy val fixScalastyle = Seq(
 )
 
 lazy val commonSettings = Seq(
-  version := "0.1.32",
+  version := "0.1.33-SNAPSHOT",
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8") ++ nexusPublishingSettings ++ fixScalastyle
