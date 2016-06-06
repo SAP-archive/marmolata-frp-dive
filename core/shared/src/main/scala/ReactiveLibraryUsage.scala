@@ -15,6 +15,25 @@ trait ReactiveLibraryUsage {
     def toEvent(implicit ec: ExecutionContext): Event[A] = futureToEvent(f)
   }
 
+  implicit final class SinalFutureExtensions[A](s: Signal[Future[A]]) {
+    def executeFuture(defaultVal: A)(implicit ec: ExecutionContext): Signal[A] = {
+      val result = Var(defaultVal)
+      var currentId = 0
+      var lastId = 0
+      s.observe { f =>
+        currentId += 1
+        val thisId = currentId
+        f.map { res =>
+          if (currentId > lastId) {
+            lastId = currentId
+            result := res
+          }
+        }
+      }
+      result
+    }
+  }
+
   implicit final class SignalExtensions[A](s: Signal[A]) {
     def toEvent: Event[A] = self.toEvent(s)
     def triggerWhen[B, C](e: Event[B], f: (A, B) => C): Event[C] = self.triggerWhen(s, e, f)
