@@ -40,6 +40,7 @@ object ReactiveLibrary {
 
   trait SignalTrait[+A] extends Observable[A] {
     def now: A
+    def get: A = now
   }
 
   trait EventTrait[+A] extends Observable[A]
