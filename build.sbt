@@ -17,7 +17,6 @@ lazy val commonSettings = Seq(
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8",
-  coverageEnabled := true
 ) ++ nexusPublishingSettings ++ fixScalastyle
 
 lazy val jsSettings = commonSettings ++ Seq(

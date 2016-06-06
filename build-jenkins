@@ -1,8 +1,8 @@
 #!/bin/sh
 sbt compile && sbt scalastyle
 exitcode=$?
-sbt test
-sbt doc
+dbt doc
+sbt coverage test
 sbt coverageReport
 sbt coverageAggregate
 exit $exitcode
