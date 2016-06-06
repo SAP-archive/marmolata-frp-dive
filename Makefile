@@ -13,7 +13,7 @@ clean:
 console:
 	sbt -J-Xms4g -J-Xmx8g console
 scalastyle:
-	sbt scalastyleGenerateConfig
+	sbt scalastyle
 doc:
 	sbt -J-Xms4g -J-Xmx8g genDocs
 publish:
