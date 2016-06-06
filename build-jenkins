@@ -1,0 +1,6 @@
+#!/bin/sh
+sbt compile && sbt scalastyle
+exitcode=$?
+sbt test
+sbt doc
+exit $exitcode
