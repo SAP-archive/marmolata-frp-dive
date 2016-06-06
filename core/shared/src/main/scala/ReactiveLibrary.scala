@@ -40,7 +40,7 @@ object ReactiveLibrary {
       * When used on a a signal, the function f is triggered whenever the signal changes its value incuding once
       * when observe is called. f is only ever called when the value changes afterwards.
       *
-      * If the method shouldn't be called directly, but only when it first changes its value, use [[ReactiveLibrary#Signal#toEvent.observe]]
+      * If the method shouldn't be called directly, but only when it first changes its value, use [[ReactiveLibraryUsage#SignalExtensions#]]
       *
       * == Usage as Event ==
       * When used on an event, observe is called each time the event triggers. Thus it's not called directly after observe is called.

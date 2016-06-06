@@ -4,6 +4,7 @@ import cats._
 import cats.Functor.ToFunctorOps
 import cats.syntax.{AllSyntax, FlatMapOps, FunctorSyntax}
 import cats.syntax.all._
+import react.ReactiveLibrary.Cancelable
 import react.cat.{Mergeable, FilterableSyntax}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -35,9 +36,38 @@ trait ReactiveLibraryUsage {
   }
 
   implicit final class SignalExtensions[A](s: Signal[A]) {
+    /**
+      * convert this signal into an event
+      *
+      * returns an event that triggers each time the value of the signal changes
+      * Note, that {{{ x.toSignal.toEvent !== Function.identity }}} is because
+      * this only returns distinct events
+      */
     def toEvent: Event[A] = self.toEvent(s)
+
+    /**
+      * returns a new Event that triggers each time [[e]] is triggered with the value of [[f]].
+      *
+      * @param e the event at which points in time the returned event triggers
+      * @param f the function with the value of the event. For each triggered event, [[f]] is called with
+      *          parameters of the current values of this signal and the event [[e]]
+      */
     def triggerWhen[B, C](e: Event[B], f: (A, B) => C): Event[C] = self.triggerWhen(s, e, f)
+
+    /**
+      * returns a new Event that triggers each time [[e]] is triggered with the value of this signal at that point in time
+      */
     def triggerWhen[B](e: Event[B]): Event[A] = triggerWhen[B, A](e, (x, _) => x)
+
+    /**
+      * like [[Signal#observe]] but only trigger after the first change of this signal
+      */
+    def observeLater(f: PartialFunction[A, Unit]): Cancelable =
+      s.toEvent.observe { x =>
+        if (f.isDefinedAt(x)) {
+          f(x)
+        }
+      }
   }
 
   implicit final class EventExtensions[A](event: Event[A]) {
