@@ -47,7 +47,6 @@ lazy val scalarx = (crossProject in file("implementations/scalarx")).
     libraryDependencies += "com.lihaoyi" %% "scalarx" % "0.3.1").
   dependsOn(root % "compile->compile;test->test")
 
-
 lazy val scalarxJS = scalarx.js
 lazy val scalarxJVM = scalarx.jvm
 

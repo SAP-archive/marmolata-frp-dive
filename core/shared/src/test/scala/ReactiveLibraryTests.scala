@@ -417,6 +417,7 @@ trait ReactLibraryTests {
     }
 
     it should "zip together events only if there's a previous value" in {
+      import unsafeImplicits._
       val v1 = EventSource[Int]()
       val v2 = EventSource[Int]()
       val l = collectValues(v1 product v2)
@@ -435,6 +436,7 @@ trait ReactLibraryTests {
     }
 
     it should "not remember its value as an event (1)" in {
+      import unsafeImplicits._
       val v = Var(7)
       val w = Var(8)
       val e = v.toEvent
@@ -582,7 +584,7 @@ trait ReactLibraryTests {
 
     it should "Never behave as neutral element" in {
       val e1 = EventSource[Int]
-      val e2 = EventSource.Never
+      val e2 = Event.Never
       val e3 = e1 merge e2
 
       val l1 = collectValues(e1)
@@ -596,6 +598,10 @@ trait ReactLibraryTests {
       l1 shouldEqual List(7, 9, 11)
       l2 shouldBe empty
       l3 shouldEqual List(7, 9, 11)
+    }
+
+    it should "correctly handle futures" in {
+      //TODO
     }
   }
 
