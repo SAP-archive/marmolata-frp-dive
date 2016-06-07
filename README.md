@@ -2,6 +2,7 @@ Reactive Library For Scala and Scala.js
 ====
 
 [![Build Status](http://mo-a32c0f9d1.mo.sap.corp:8080/buildStatus/icon?job=ReactiveLibrary-build_dev)](http://mo-a32c0f9d1.mo.sap.corp:8080/job/ReactiveLibrary-build_dev/)
+![License](https://img.shields.io/:license-unfree-red.svg)
 
 [API documentation](http://mo-a32c0f9d1.mo.sap.corp:8080/job/ReactiveLibrary-build_dev/javadoc/#react.package)
 
