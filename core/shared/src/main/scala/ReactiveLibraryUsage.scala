@@ -4,7 +4,7 @@ import cats._
 import cats.Functor.ToFunctorOps
 import cats.syntax.{AllSyntax, FlatMapOps, FunctorSyntax}
 import cats.syntax.all._
-import react.ReactiveLibrary.Cancelable
+import react.ReactiveLibrary.{Observable, Cancelable}
 import react.cat.{Mergeable, FilterableSyntax}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -13,10 +13,11 @@ trait ReactiveLibraryUsage {
   self: ReactiveLibrary =>
 
   implicit final class FutureExtensions[A](f: Future[A]) {
+    @deprecated("use [[FutureExtensions#executeFuture]] instead", "0.33")
     def toEvent(implicit ec: ExecutionContext): Event[A] = futureToEvent(f)
   }
 
-  implicit final class SinalFutureExtensions[A](s: Signal[Future[A]]) {
+  implicit final class FutureExtensions2[A](s: Observable[Future[A]]) {
     def executeFuture(defaultVal: A)(implicit ec: ExecutionContext): Signal[A] = {
       val result = Var(defaultVal)
       var currentId = 0
