@@ -267,7 +267,7 @@ trait ReactLibraryTests {
       implicit val queue = new SimpleExecutionContext()
 
       val p = Promise[Int]()
-      val v = p.future.toEvent
+      val v = DeprecationForwarder.C.futureToEvent(p.future)
       val l = collectValues(v)
       queue.runQueue("trigger 1")
 
