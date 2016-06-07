@@ -103,7 +103,7 @@ trait ReactLibraryTests {
     @deprecated("", "")
     class C {
       import reactLibrary._
-      def futureToEvent[A](f: Future[A]): Event[A] = f.toEvent
+      def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = f.toEvent
     }
     object C extends C
   }
@@ -284,8 +284,8 @@ trait ReactLibraryTests {
       val promises = new Array[Promise[Int]](10)
       (0 to 9) foreach { i => promises(i) = Promise[Int]() }
       val v = Var(0)
-      val w = DeprecationForwarder.C.futureToEvent(v).flatMap { i =>
-        promises(i).future.toEvent(queue.subExecutor(s"${i}"))
+      val w = v.toEvent.flatMap { i =>
+        DeprecationForwarder.C.futureToEvent(promises(i).future)(queue.subExecutor(s"${i}"))
       }
 
       val l = collectValues(w)
