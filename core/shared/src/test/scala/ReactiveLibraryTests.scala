@@ -96,16 +96,30 @@ trait ReactLibraryTests {
   val reactLibrary: ReactiveLibrary with ReactiveLibraryUsage = reactLibrary_
   def reactLibrary_ : ReactiveLibrary with ReactiveLibraryUsage
 
+  private object DeprecationForwarder {
+    // using workaround for https://issues.scala-lang.org/browse/SI-7934
+    // this is completely ridicoulous but appearantly
+    // noone cares enough
+    @deprecated("", "")
+    class C {
+      import reactLibrary._
+      def futureToEvent[A](f: Future[A]): Event[A] = f.toEvent
+    }
+    object C extends C
+  }
+
+
   def runLibraryTests: Unit = {
     import reactLibrary._
     import reactLibrary.syntax._
     import ReactLibraryTests._
 
+
     it should "not trigger this strange flatMap bug ;;;;" in {
       implicit val queue = new SimpleExecutionContext()
       val e = EventSource[Int]
       val p = Promise[Int]
-      val f = p.future.toEvent
+      val f = DeprecationForwarder.C.futureToEvent(p.future)
 
 
       import unsafeImplicits.eventApplicative
@@ -113,7 +127,7 @@ trait ReactLibraryTests {
       val r = e.flatMap {
         i =>
           number += 1
-          p.future.toEvent
+          DeprecationForwarder.C.futureToEvent(p.future)
       }
       val l = collectValues(r)
 
@@ -270,7 +284,7 @@ trait ReactLibraryTests {
       val promises = new Array[Promise[Int]](10)
       (0 to 9) foreach { i => promises(i) = Promise[Int]() }
       val v = Var(0)
-      val w = v.toEvent.flatMap { i =>
+      val w = DeprecationForwarder.C.futureToEvent(v).flatMap { i =>
         promises(i).future.toEvent(queue.subExecutor(s"${i}"))
       }
 
@@ -310,7 +324,7 @@ trait ReactLibraryTests {
       val v = EventSource[Int]
       val p = Promise[Int]
       import unsafeImplicits.eventApplicative
-      val r = v.flatMap { i => p.future.toEvent }
+      val r = v.flatMap { i => DeprecationForwarder.C.futureToEvent(p.future) }
       v emit 10
       queue.runQueue("q1")
       val l = collectValues(r)
