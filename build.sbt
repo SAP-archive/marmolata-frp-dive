@@ -61,3 +61,13 @@ lazy val metarx = (crossProject in file("implementations/metarx")).
 
 lazy val metarxJS = metarx.js
 lazy val metarxJVM = metarx.jvm
+
+lazy val selfrx = (crossProject in file("implementations/selfrx")).
+  jsSettings(jsSettings: _*).jvmSettings(jvmSettings: _*).
+  settings(
+    name := "reactive-impl-self"
+  ).
+  dependsOn(root % "compile->compile;test->test")
+
+lazy val selfrxJS = selfrx.js
+lazy val selfrxJVM = selfrx.jvm

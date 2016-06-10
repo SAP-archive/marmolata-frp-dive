@@ -5,8 +5,10 @@ sbt doc
 # scoverage only understands jvm
 sbt coverage scalarxJVM/test
 sbt coverage metarxJVM/test
+sbt coverage selfrxJVM/test
 sbt scalarxJS/test
 sbt metarxJS/test
+sbt selfrxJS/test
 sbt coverageReport
 sbt coverageAggregate
 exit $exitcode

@@ -193,7 +193,7 @@ trait ReactLibraryTests {
       val v2 = Var(-1)
       val l = collectValues(v2)
 
-      v1.map(v2.update(_))
+      v1.map(v2.update(_)).observe{_ => {}}
 
       (1 to 5) foreach (v1.update)
 
