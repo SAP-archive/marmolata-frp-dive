@@ -61,16 +61,3 @@ lazy val metarx = (crossProject in file("implementations/metarx")).
 
 lazy val metarxJS = metarx.js
 lazy val metarxJVM = metarx.jvm
-
-lazy val monix = (crossProject in file("implementations/monix")).
-  jsSettings(commonSettings: _*).jvmSettings(commonSettings: _*).
-  settings(
-    name := "reactive-impl-monix",
-    libraryDependencies += "io.monix" %%% "monix" % "2.0-RC2",
-    libraryDependencies += "io.monix" %% "monix" % "2.0-RC2").
-  dependsOn(root % "compile->compile;test->test")
-
-lazy val monixJS = monix.js
-lazy val monixJVM = monix.jvm
-
-//libraryDependencies += "com.thoughtworks.binding" %%% "dom" % "latest.release"
