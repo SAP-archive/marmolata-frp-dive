@@ -61,6 +61,13 @@ trait ReactiveLibraryUsage {
     def triggerWhen[B](e: Event[B]): Event[A] = triggerWhen[B, A](e, (x, _) => x)
 
     /**
+      * returns a signal that is changed only at specific points in time
+      *
+      * @param e points in time when the returned signal is updated to the new value
+      */
+    def changeWhen(e: Event[Any]): Signal[A] = triggerWhen(e).toSignal(s.now)
+
+    /**
       * like [[Signal#observe]] but only trigger after the first change of this signal
       */
     def observeLater(f: PartialFunction[A, Unit]): Cancelable =

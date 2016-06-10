@@ -614,6 +614,24 @@ trait ReactLibraryTests {
       l3 shouldEqual List(7, 9, 11)
     }
 
+    it should "correctly handle changeWhen" in {
+      val v = Var(0)
+      val e = EventSource[Unit]
+      val l = collectValues(v.changeWhen(e))
+
+      v := 1
+      v := 2
+      e emit Unit
+      e emit Unit
+
+      v := 7
+      e emit Unit
+
+      v := 10
+
+      l shouldBe List(0, 2, 7)
+    }
+
     it should "correctly handle futures" in {
       //TODO
     }
