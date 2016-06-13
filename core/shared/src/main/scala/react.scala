@@ -40,12 +40,13 @@
   * }}}
   *
   * As you can see here, [[react.ReactiveLibrary.Observable#observe observe]] can be used to do side effects whenever the value of a signal changes.
-  * Note, tha you should avoid using observe and instead build new Signals and Events out of older ones via . Therefore, there are functions available like:
-  * Therefore, use functions like [[http://typelevel.org/cats/api/index.html#cats.Functor$$Ops@map[B](f:A=>B):F[B] map]],
+  * Note, that it should be avoid to use observe and instead build new Signals and Events out of older ones via methods like
+  * [[http://typelevel.org/cats/api/index.html#cats.Functor$$Ops@map[B](f:A=>B):F[B] map]],
   * [[http://typelevel.org/cats/api/index.html#cats.Cartesian$$Ops@product[B](fb:F[B]):F[(A,B)] product]],
   * [[http://typelevel.org/cats/api/index.html#cats.Cartesian$$Ops@product[B](fb:F[B]):F[(A,B)] map2]],
   * [[react.ReactiveLibraryUsage#SignalExtensions#triggerWhen[B](e:ReactiveLibraryUsage\.this\.Event[B]):ReactiveLibraryUsage\.this\.Event[A]* triggerWhen]],
   * [[react.ReactiveLibraryUsage#SignalExtensions#changeWhen changeWhen]]
+  * and give these Signals back to the Marmolata platform.
   *
   * {{{
   *   import reactive.library._
@@ -105,6 +106,43 @@
   * [[react.cat.FilterableSyntax.FilterableObs#mapPartial mapPartial]],
   * [[react.ReactiveLibraryUsage#SignalExtensions#toEvent toEvent]],
   * [[react.ReactiveLibraryUsage#SignalExtensions#triggerWhen[B](e:ReactiveLibraryUsage\.this\.Event[B]):ReactiveLibraryUsage\.this\.Event[A]* triggerWhen]],
-  * [[react.ReactiveLibraryUsage#EventExtensions#mergeEither]],
+  * [[react.ReactiveLibraryUsage#EventExtensions#mergeEither mergeEither]].
+  *
+  * === Example ===
+  *
+  * {{{
+  *   import reactive.library._
+  *   import reactive.library.syntax._
+  *
+  *   val e = EventSource[Int]
+  *   val f = EventSource[Int]
+  *   val eMergeFilteredF = e merge f.filter(_ % 2 == 0)
+  *   val eMergeFilteredFSignal = eMergeFilteredF.toSignal(0)
+  *
+  *   e.observe(x => "e is triggered: $x")
+  *   f.observe(x => "f is triggered: $x")
+  *   eMergeFilteredF.observe(x => "eMergeFilteredF is triggered: $x")
+  *   eMergeFilteredFSignal.observe(x => "eMergeFilteredFSignal changed to: $x")
+  *   > eMergeFilteredFSignal changed to: 0
+  *
+  *   e emit 10
+  *   > e is triggered: 10
+  *   > eMergeFilteredF is triggered: 10
+  *   > eMergeFileredFSignal is changed to: 10
+  *
+  *   f emit 5
+  *   > f is triggered: 5
+  *
+  *   f emit 20
+  *   > f is triggered: 20
+  *   > eMergeFilteredF is triggered: 20
+  *   > eMergeFilteredFSignal is changed to: 20
+  *
+  *   e emit 20
+  *   > e is triggered: 20
+  *   > eMergeFilteredF is triggered: 20
+  *
+  * }}}
+  *
   */
 package object react {}
