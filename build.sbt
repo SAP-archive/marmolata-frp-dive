@@ -4,7 +4,8 @@ lazy val nexusPublishingSettings = Seq(
   publishMavenStyle := true,
   publishArtifact in Test := false,
   publishTo := Some("SAP Nexus" at "http://nexus.wdf.sap.corp:8081/nexus/content/repositories/deploy.milestones.marmolata/"),
-  credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+  credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
+  javacOptions in (Compile,doc) ++= Seq("-notimestamp", "-linksource")
 )
 
 // see also https://github.com/scalastyle/scalastyle-sbt-plugin/issues/47
@@ -13,7 +14,7 @@ lazy val fixScalastyle = Seq(
 )
 
 lazy val commonSettings = Seq(
-  version := "0.1.33-SNAPSHOT",
+  version := "0.1.35",
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8"

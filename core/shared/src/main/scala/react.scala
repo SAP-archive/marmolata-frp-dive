@@ -1,0 +1,110 @@
+/**
+  *
+  * == Overview ==
+  * This library provides reactive programming primitives to be able to do reactive functional programming.
+  *
+  * == Usage ==
+  * To use this library, include the following import statements in any file:
+  *
+  * {{{
+  *   import reactive.library._
+  *   import reactive.library.syntax._
+  * }}}
+  *
+  * The central concepts of this library are [[react.ReactiveLibrary#Signal Signal]] and [[react.ReactiveLibrary#Event Event]]
+  *
+  * === Signal ===
+  * A signal is a time-varying value, i.e. for every point in time, a Signal[A] has a value of type A.
+  * Signals can represent any kind of values and can be composed. In the context of marmolata,
+  * a Signal may represent e.g. the current value of an input field or the currently displayed sql query in a table.
+  *
+  * Signals can be created with the [[react.ReactiveLibrary#Var Var]] and [[react.ReactiveLibrary.SignalCompanionObject#Const Signal.Const]] constructors.
+  * Var creates a reactive variable
+  * that can be changed by the [[react.ReactiveLibrary.VarTrait#:= :=]] function, while Const creates a Signal that's never changed.
+  *
+  * === Example ===
+  *
+  * {{{
+  *   import reactive.library._
+  *   import reactive.library.syntax._
+  *
+  *   val var1 = Var(5)
+  *   var1.observe(x => println(s"new value of var1: $x"))
+  *   > new value of var1: 5
+  *
+  *   var1 := 10
+  *   > new value of var1: 10
+  *
+  *   var1 := 15
+  *   > new value of var1: 15
+  * }}}
+  *
+  * As you can see here, [[react.ReactiveLibrary.Observable#observe observe]] can be used to do side effects whenever the value of a signal changes.
+  * Note, tha you should avoid using observe and instead build new Signals and Events out of older ones via . Therefore, there are functions available like:
+  * Therefore, use functions like [[http://typelevel.org/cats/api/index.html#cats.Functor$$Ops@map[B](f:A=>B):F[B] map]],
+  * [[http://typelevel.org/cats/api/index.html#cats.Cartesian$$Ops@product[B](fb:F[B]):F[(A,B)] product]],
+  * [[http://typelevel.org/cats/api/index.html#cats.Cartesian$$Ops@product[B](fb:F[B]):F[(A,B)] map2]],
+  * [[react.ReactiveLibraryUsage#SignalExtensions#triggerWhen[B](e:ReactiveLibraryUsage\.this\.Event[B]):ReactiveLibraryUsage\.this\.Event[A]* triggerWhen]],
+  * [[react.ReactiveLibraryUsage#SignalExtensions#changeWhen changeWhen]]
+  *
+  * {{{
+  *   import reactive.library._
+  *   import reactive.library.signal._
+  *
+  *   val v1 = Var(5)
+  *   val v2 = Var(7)
+  *   // combine v1 and v2 and build a tuple
+  *   val v: Signal[(Int, Int)] = v1 product v2
+  *   v.observe(x => println(s"v now has value $x")
+  *   > v now has value (5, 7)
+  *   v1 := 10
+  *   > v now has value (10, 7)
+  *   v2 := 17
+  *   > v now has value (10, 17)
+  *   v2 := 17
+  *   v2 := 20
+  *   > v now has value (10, 20)
+  *
+  *   val w = v1.map(_ * 10)
+  *   w.observe(x => println("w now has value $x"))
+  *   > w now has value 10
+  *   v := 7
+  *   > v now has value (7, 20)
+  *   > w now has value 14
+  * }}}
+  *
+  * By using these primitives, it's ensured that Signals don't get updated to intermediate values. Consider the following example:
+  *
+  * {{{
+  *   import reactive.library._
+  *   import reactive.library.signal._
+  *
+  *   val v = Var(0)
+  *   val w = v.map(_ + 3)
+  *   val z = v.map(2 * _)
+  *   val r = w.map2(z)((x, y) => x + y)
+  *
+  *   r.observe(x => s"r now has value $x")
+  *   > r now has value 3
+  *   v := 2
+  *   > r now has value 9
+  *   v := 10
+  *   > r now has value 33
+  * }}}
+  *
+  * Note, that v, w, z and r get updated atomically. So, there's no intermediate state when w is already updated but z isn't yet updated.
+  *
+  * === Events ===
+  * [[react.ReactiveLibrary#Event Event[A] ]] represent the entirety of specific points in time when some event happens.
+  * This could e.g. be the event representing Button clicks or the event representing tablre reloads. An event can have associated data, e.g.
+  * the mouse position of a Button click or the associated data of a table reload. But often, [[scala.Unit]] is used.
+  *
+  * Events can be created with the [[react.ReactiveLibrary.EventSourceCompanionObject#apply EventSource constructor]] or created from other events by methods like
+  * [[react.cat.FilterableSyntax.MergeableObs#merge merge]], [[react.cat.FilterableSyntax.FilterableObs#filter filter]],
+  * [[http://typelevel.org/cats/api/index.html#cats.Functor$$Ops@map[B](f:A=>B):F[B] map]],
+  * [[react.cat.FilterableSyntax.FilterableObs#mapPartial mapPartial]],
+  * [[react.ReactiveLibraryUsage#SignalExtensions#toEvent toEvent]],
+  * [[react.ReactiveLibraryUsage#SignalExtensions#triggerWhen[B](e:ReactiveLibraryUsage\.this\.Event[B]):ReactiveLibraryUsage\.this\.Event[A]* triggerWhen]],
+  * [[react.ReactiveLibraryUsage#EventExtensions#mergeEither]],
+  */
+package object react {}

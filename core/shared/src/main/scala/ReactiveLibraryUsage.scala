@@ -13,7 +13,7 @@ trait ReactiveLibraryUsage {
   self: ReactiveLibrary =>
 
   implicit final class FutureExtensions[A](f: Future[A]) {
-    @deprecated("use [[FutureExtensions#executeFuture]] instead", "0.33")
+    @deprecated("use [[FutureExtensions2#executeFuture]] instead", "0.33")
     def toEvent(implicit ec: ExecutionContext): Event[A] = futureToEvent(f)
   }
 
@@ -47,16 +47,16 @@ trait ReactiveLibraryUsage {
     def toEvent: Event[A] = self.toEvent(s)
 
     /**
-      * returns a new Event that triggers each time [[e]] is triggered with the value of [[f]].
+      * returns a new Event that triggers each time e is triggered with the value of f]
       *
       * @param e the event at which points in time the returned event triggers
-      * @param f the function with the value of the event. For each triggered event, [[f]] is called with
-      *          parameters of the current values of this signal and the event [[e]]
+      * @param f the function with the value of the event. For each triggered event, f is called with
+      *          parameters of the current values of this signal and the event e
       */
     def triggerWhen[B, C](e: Event[B], f: (A, B) => C): Event[C] = self.triggerWhen(s, e, f)
 
     /**
-      * returns a new Event that triggers each time [[e]] is triggered with the value of this signal at that point in time
+      * returns a new Event that triggers each time @p e is triggered with the value of this signal at that point in time
       */
     def triggerWhen[B](e: Event[B]): Event[A] = triggerWhen[B, A](e, (x, _) => x)
 
@@ -68,7 +68,7 @@ trait ReactiveLibraryUsage {
     def changeWhen(e: Event[Any]): Signal[A] = triggerWhen(e).toSignal(s.now)
 
     /**
-      * like [[Signal#observe]] but only trigger after the first change of this signal
+      * like TODO: Signal#observe but only trigger after the first change of this signal
       */
     def observeLater(f: PartialFunction[A, Unit]): Cancelable =
       s.toEvent.observe { x =>

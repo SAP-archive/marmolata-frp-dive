@@ -7,6 +7,7 @@ import cats._
 
 import scala.language.higherKinds
 
+
 object ReactiveLibrary {
   trait VarCompanionObject[Var[_]] {
     /**
@@ -18,13 +19,13 @@ object ReactiveLibrary {
   trait SignalCompanionObject[Signal[_]] {
     /**
      * returns a constant signal that never changes its initial value
-     * this is the same as [[cats.Applicative#pure]]
+     * this is the same as cats.Applicative#pure
      */
     def Const[A](value: A): Signal[A]
   }
 
-  trait EventSourceCompanionObject[Event[_], NativeEvent[_]] {
-    def apply[A](): NativeEvent[A]
+  trait EventSourceCompanionObject[Event[_], EventSource[_]] {
+    def apply[A](): EventSource[A]
   }
 
   trait EventCompanionObject[Event[_]] {
@@ -47,8 +48,8 @@ object ReactiveLibrary {
       * Also, differently form the Signal case, it can be called with the same value twice in succession.
       *
       * == Additional information ==
-      * Besides future compositon methods like [[ReactiveLibraryUsage#SignalFutureExtensions#executeFuture]] this is
-      * the most important method to create side effects. It's especially not allowed to use [[Functor#map]]
+      * Besides future compositon methods like [[ReactiveLibraryUsage#FutureExtensions2#executeFuture]] this is
+      * the most important method to create side effects. It's especially not allowed to use Functor#map
       * to do side effects. Instead, use this method
       *
       * @param f the method to call
@@ -60,8 +61,8 @@ object ReactiveLibrary {
   trait SignalTrait[+A] extends Observable[A] {
     /**
       * returns the current value of this Signal.
-      * It's generally better to use composition methods like [[Functor#map]], [[Cartesian#product]],
-      * [[ReactiveLibraryUsage#SignalExtensions#triggerWhen]] and similar methods.
+      * It's generally better to use composition methods like Functor#map, Cartesian#product
+      * ReactiveLibraryUsage#SignalExtensions[A]#triggerWhen[B](Event[B]):Event[A]*  and similar methods.
       * It should also be avoided to use now inside of any of these methods since the current value
       * of a signal could be in an inconsistent state
      */
@@ -107,7 +108,6 @@ object ReactiveLibrary {
 
 import ReactiveLibrary._
 
-
 trait ReactiveLibrary {
   // deliberately make Event and Signal into volatile types
   // to be able to override them,
@@ -125,7 +125,7 @@ trait ReactiveLibrary {
   type Signal[+A] <: SignalTrait[A] with VolatileHelper
 
   /** a time varying value that can be changed (and is generally only changed)
-    * when it's [[VarTrait#update]] method is called
+    * when it's [[ReactiveLibrary.VarTrait#update]] method is called
     */
   type Var[A] <: Signal[A] with VarTrait[A]
   type EventSource[A] <: Event[A] with EventSourceTrait[A]
