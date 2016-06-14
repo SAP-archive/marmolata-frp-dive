@@ -47,6 +47,8 @@ class Debugger extends SelfRxLogging {
       }
     }
 
+    val result
+
     allEle.foreach { case (p, n) =>
       // see https://issues.scala-lang.org/browse/SI-6476
       val label = p match {
