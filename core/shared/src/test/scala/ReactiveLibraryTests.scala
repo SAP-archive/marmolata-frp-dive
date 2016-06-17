@@ -637,6 +637,22 @@ trait ReactLibraryTests {
     }
   }
 
+  it should "play well with ReassignableSignal" in {
+    case class Input(value: ReassignableVar[String] = ReassignableVar("hallo"), visible: ReassignableVar[Boolean] = ReassignableVar(false))
+
+    val valueVar = Var("Marmolata!")
+    val visibleVar = Var(true)
+    val input = Input()
+    input.value.subscribe(valueVar)
+    input.visible.subscribe(visibleVar)
+    assert(input.visible.now == true)
+    visibleVar := false
+    assert(input.visible.now == false)
+    assert(input.value.now == "Marmolata!")
+    valueVar := "Rein in die Monade"
+    assert(input.value.now == "Rein in die Monade")
+  }
+
   def runPropertyTests: Unit = {
     import cats.laws.discipline._
     import reactLibrary._
