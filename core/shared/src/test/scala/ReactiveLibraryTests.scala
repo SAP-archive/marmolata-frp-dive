@@ -1,7 +1,11 @@
 package react.LibTests
 
+import java.io.ByteArrayOutputStream
+
 import algebra.Eq
-import org.scalacheck.{Gen, Arbitrary}
+import com.sun.xml.internal.fastinfoset.tools.SAXEventSerializer
+import org.scalacheck.Test.{Result, TestCallback}
+import org.scalacheck.{Test, Gen, Arbitrary}
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Succeeded, FlatSpec, AsyncFlatSpec, Matchers}
 import react.{ReactiveLibraryUsage, ReactiveLibrary}
@@ -193,7 +197,7 @@ trait ReactLibraryTests {
       val v2 = Var(-1)
       val l = collectValues(v2)
 
-      v1.map(v2.update(_)).observe{_ => {}}
+      v1.map(v2.update(_)).observe { _ => {} }
 
       (1 to 5) foreach (v1.update)
 
@@ -635,22 +639,40 @@ trait ReactLibraryTests {
     it should "correctly handle futures" in {
       //TODO
     }
-  }
 
-  it should "play well with ReassignableSignal" in {
-    case class Input(value: ReassignableVar[String] = ReassignableVar("hallo"), visible: ReassignableVar[Boolean] = ReassignableVar(false))
+    it should "play well with ReassignableSignal" in {
+      case class Input(value: ReassignableVar[String] = ReassignableVar("hallo"), visible: ReassignableVar[Boolean] = ReassignableVar(false))
 
-    val valueVar = Var("Marmolata!")
-    val visibleVar = Var(true)
-    val input = Input()
-    input.value.subscribe(valueVar)
-    input.visible.subscribe(visibleVar)
-    assert(input.visible.now == true)
-    visibleVar := false
-    assert(input.visible.now == false)
-    assert(input.value.now == "Marmolata!")
-    valueVar := "Rein in die Monade"
-    assert(input.value.now == "Rein in die Monade")
+      val valueVar = Var("Marmolata!")
+      val visibleVar = Var(true)
+      val input = Input()
+      input.value.subscribe(valueVar)
+      input.visible.subscribe(visibleVar)
+      assert(input.visible.now == true)
+      visibleVar := false
+      assert(input.visible.now == false)
+      assert(input.value.now == "Marmolata!")
+      valueVar := "Rein in die Monade"
+      assert(input.value.now == "Rein in die Monade")
+    }
+
+    it should "work well with Event.toSignal" in {
+      val e = EventSource[Int]
+      e emit 5
+      e emit 13
+      val s = e.toSignal(27)
+      s.now shouldBe 27
+      e emit 77
+      s.now shouldBe 77
+
+      val s2 = e.toSignal(33)
+      s.now shouldBe 77
+      s2.now shouldBe 33
+
+      e emit 100
+      s.now shouldBe 100
+      s2.now shouldBe 100
+    }
   }
 
   def runPropertyTests: Unit = {
@@ -676,7 +698,7 @@ trait ReactLibraryTests {
         (x: Int, y: Int) => y,
         (x: Int, y: Int) => x + y,
         (x: Int, y: Int) => 0
-      ).flatMap( f =>
+      ).flatMap(f =>
         signalGen.map {
           _.map(x => (y: Int) => f(x, y))
         }
@@ -686,8 +708,6 @@ trait ReactLibraryTests {
     implicit val arbitrarySignalFun = Arbitrary[Signal[Int => Int]](signalFunGen)
 
     import language.postfixOps
-
-    var counter = 0
 
     // TODO is it allowed to do undeterministic equality here?
     // (ideally, we'd like to return Gen[Boolean])
@@ -712,8 +732,6 @@ trait ReactLibraryTests {
             true
         }
         finally {
-          counter += 1
-          if (counter % 10 == 0) { println(s"another 10: $counter")}
           l1.ref.kill()
           l2.ref.kill()
         }
@@ -730,7 +748,20 @@ trait ReactLibraryTests {
       override def eqv(x: (Int, Int, Int), y: (Int, Int, Int)): Boolean = x == y
     }
 
+    behavior of "Signal"
+    ApplicativeTests[Signal].applicative[Int, Int, Int].all.properties.foreach {
+      case (name, property) =>
+        it should name in {
+          val seedBaos = new ByteArrayOutputStream()
 
-    //ApplicativeTests[Signal].applicative[Int, Int, Int].all.check
+          val test = Test.check(property) {
+            _.withMinSuccessfulTests(1000)
+          }
+          if(test.passed) {
+            info(test.toString)
+          }
+          assert(test.passed, test)
+        }
+    }
   }
 }
