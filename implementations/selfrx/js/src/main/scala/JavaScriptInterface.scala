@@ -14,7 +14,14 @@ trait JavaScriptInterface {
   def printGraph(): Unit = logInConsle()
 
   @JSExport
-  def drawGraph(container: dom.Node): vis.Network = {
+  def dotGraphAsString(): String = {
+    var s : String = ""
+    drawCurrent { w => s += w }
+    s
+  }
+
+  @JSExport
+  def drawGraph(container: dom.Node, options: js.Object = js.Dynamic.literal().asInstanceOf[js.Object]): vis.Network = {
     val graph = currentGraph()
 
     val data = NetworkData(
@@ -22,7 +29,7 @@ trait JavaScriptInterface {
       graph.edges.map(x => new GraphEdge(x.from, x.to))
     )
 
-    new vis.Network(container, data)
+    new vis.Network(container, data, options)
   }
 }
 

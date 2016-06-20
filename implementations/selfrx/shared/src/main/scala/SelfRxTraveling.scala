@@ -254,7 +254,7 @@ class Debugger extends JavaScriptInterface {
       p.getChildren().map { c =>
         val nc = allEle(c)
         val ncn = unimportantReductions.get(nc).map(_.minValue).getOrElse(nc)
-        GraphEdges("D${nc}", "D${ncn}")
+        GraphEdges(s"D${nn}", s"D${ncn}")
       }
     }.toSeq
 

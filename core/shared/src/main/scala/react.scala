@@ -29,7 +29,7 @@
   *   import reactive.library.syntax._
   *
   *   val var1 = Var(5)
-  *   var1.observe(x => println(s"new value of var1: $x"))
+  *   var1.observe(x => println(s"new value of var1: x"))
   *   > new value of var1: 5
   *
   *   var1 := 10
@@ -56,7 +56,7 @@
   *   val v2 = Var(7)
   *   // combine v1 and v2 and build a tuple
   *   val v: Signal[(Int, Int)] = v1 product v2
-  *   v.observe(x => println(s"v now has value $x")
+  *   v.observe(x => println(s"v now has value dollarx")
   *   > v now has value (5, 7)
   *   v1 := 10
   *   > v now has value (10, 7)
@@ -67,7 +67,7 @@
   *   > v now has value (10, 20)
   *
   *   val w = v1.map(_ * 10)
-  *   w.observe(x => println("w now has value $x"))
+  *   w.observe(x => println("w now has value dollarx"))
   *   > w now has value 10
   *   v := 7
   *   > v now has value (7, 20)
@@ -85,7 +85,7 @@
   *   val z = v.map(2 * _)
   *   val r = w.map2(z)((x, y) => x + y)
   *
-  *   r.observe(x => s"r now has value $x")
+  *   r.observe(x => s"r now has value dollarx")
   *   > r now has value 3
   *   v := 2
   *   > r now has value 9
@@ -98,7 +98,7 @@
   * === Events ===
   * [[react.ReactiveLibrary#Event Event[A] ]] represent the entirety of specific points in time when some event happens.
   * This could e.g. be the event representing Button clicks or the event representing tablre reloads. An event can have associated data, e.g.
-  * the mouse position of a Button click or the associated data of a table reload. But often, [[scala.Unit]] is used.
+  * the mouse position of a Button click or the associated data of a table reload. But often, scala.Unit is used.
   *
   * Events can be created with the [[react.ReactiveLibrary.EventSourceCompanionObject#apply EventSource constructor]] or created from other events by methods like
   * [[react.cat.FilterableSyntax.MergeableObs#merge merge]], [[react.cat.FilterableSyntax.FilterableObs#filter filter]],
@@ -119,10 +119,10 @@
   *   val eMergeFilteredF = e merge f.filter(_ % 2 == 0)
   *   val eMergeFilteredFSignal = eMergeFilteredF.toSignal(0)
   *
-  *   e.observe(x => "e is triggered: $x")
-  *   f.observe(x => "f is triggered: $x")
-  *   eMergeFilteredF.observe(x => "eMergeFilteredF is triggered: $x")
-  *   eMergeFilteredFSignal.observe(x => "eMergeFilteredFSignal changed to: $x")
+  *   e.observe(x => "e is triggered: dollarx")
+  *   f.observe(x => "f is triggered: dollarx")
+  *   eMergeFilteredF.observe(x => "eMergeFilteredF is triggered: dollarx")
+  *   eMergeFilteredFSignal.observe(x => "eMergeFilteredFSignal changed to: dollarx")
   *   > eMergeFilteredFSignal changed to: 0
   *
   *   e emit 10

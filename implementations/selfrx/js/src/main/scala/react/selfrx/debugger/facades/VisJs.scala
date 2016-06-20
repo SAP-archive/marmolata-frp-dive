@@ -13,9 +13,13 @@ class GraphEdge(val from: String, val to: String) extends js.Object
 @ScalaJSDefined
 trait NetworkData extends js.Object
 
+@js.native
+@JSName("vis.DataSet")
+class DataSet(v: js.Array[_]) extends js.Any
+
 object NetworkData {
   def apply(nodes: Seq[GraphNode], edges: Seq[GraphEdge]): NetworkData = {
-    js.Dynamic.literal(nodes = nodes.toJSArray, edges = edges.toJSArray).asInstanceOf[NetworkData]
+    js.Dynamic.literal(nodes = new DataSet(nodes.toJSArray), edges = new DataSet(edges.toJSArray)).asInstanceOf[NetworkData]
   }
 }
 

@@ -91,7 +91,7 @@ object ReactiveLibrary {
       * update the value of this Var. This potentially triggers
       * value changes of dependent variables and events
       * and can also trigger side effects when any of those
-      * have an attached [[Observable#observe]] method.
+      * have an attached Observable#observe method.
       *
       * Note, that this is a noop when newValue is the old value of this variable
       */
