@@ -1,7 +1,8 @@
 package react.impls.helper
 
 import react.ReactiveLibrary
-import react.ReactiveLibrary.{SignalCompanionObject, EventCompanionObject, EventSourceCompanionObject, Cancelable}
+import react.ReactiveLibrary._
+import cats.syntax.flatMap._
 
 
 object NonCancelable extends Cancelable {
@@ -24,6 +25,30 @@ trait DefaultEventObject {
 
   final object Event extends EventCompanionObject[Event] {
     override def Never: Event[Nothing] = EventSource[Nothing]
+  }
+}
+
+trait DefaultReassignableVar {
+  self: ReactiveLibrary =>
+  class ReassignableVar[A] private (constr: Var[Signal[A]]) extends ReassignableVarTrait[A, Signal] {
+
+    private lazy val self: Signal[A] = unsafeImplicits.signalApplicative.flatten(constr)
+
+    override def update(newValue: A): Unit = constr update (Signal.Const(newValue))
+
+    override def now: A = self.now
+
+    override def observe(f: (A) => Unit): Cancelable = self.observe(f)
+
+    override def subscribe(s: Signal[A]): Unit = constr update s
+
+    override def toSignal: Signal[A] = self
+  }
+
+  override object ReassignableVar extends ReassignableVarCompanionObject[ReassignableVar, Signal] {
+    override def apply[A](init: A): ReassignableVar[A] = new ReassignableVar(Var(Signal.Const(init)))
+
+    override def apply[A](init: Signal[A]): ReassignableVar[A] = new ReassignableVar(Var(init))
   }
 }
 

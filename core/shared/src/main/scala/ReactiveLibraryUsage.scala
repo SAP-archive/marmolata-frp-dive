@@ -9,6 +9,12 @@ import react.cat.{Mergeable, FilterableSyntax}
 
 import scala.concurrent.{ExecutionContext, Future}
 
+trait ReactiveDeclaration extends ReactiveLibrary with ReactiveLibraryUsage
+
+trait ReactiveObject {
+  val library: ReactiveDeclaration
+}
+
 trait ReactiveLibraryUsage {
   self: ReactiveLibrary =>
 
@@ -92,17 +98,6 @@ trait ReactiveLibraryUsage {
     }
   }
 
-  class ReassignableVar[A](private[ReactiveLibraryUsage] val constr: Var[Signal[A]]) {
-    def subscribe(p: Signal[A]): Unit = constr := p
-    def := (p: A): Unit = constr := Signal.Const(p)
-  }
-
-
-  object ReassignableVar {
-    def apply[A](init: Signal[A]): ReassignableVar[A] = new ReassignableVar(Var(init))
-    def apply[A](init: A): ReassignableVar[A] = new ReassignableVar[A](Var(Signal.Const(init)))
-  }
-
   class ReassignableEvent[A](private[ReactiveLibraryUsage] val constr: Var[Event[A]]) {
     def subscribe(p: Event[A]): Unit = constr := p
   }
@@ -125,10 +120,7 @@ trait ReactiveLibraryUsage {
   import scala.language.implicitConversions
 
 
-  implicit def reassignableSignalToSignal[A](p: ReassignableVar[A]): Signal[A] = {
-    import self.unsafeImplicits.{signalApplicative => s}
-    (p.constr: Signal[Signal[A]]).flatMap(identity)
-  }
+  implicit def reassignableSignalToSignal[A](p: ReassignableVar[A]): Signal[A] = p.toSignal
 
   implicit def reassignableEventToEvent[A](p: ReassignableEvent[A]): Event[A] = {
     import self.unsafeImplicits.{signalApplicative => s}
@@ -175,4 +167,6 @@ trait ReactiveLibraryUsage {
     implicit def reassignableEventIsMergeable[A](e: ReassignableEvent[A]): MergeableObs[Event, A] = new MergeableObs(e)
     implicit def reassignableEventIsFilterable[A](e: ReassignableEvent[A]): FilterableObs[Event, A] = new FilterableObs(e)
   }
+
+  object syntax extends Syntax
 }

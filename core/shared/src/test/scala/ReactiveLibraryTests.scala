@@ -6,6 +6,7 @@ import algebra.Eq
 import com.sun.xml.internal.fastinfoset.tools.SAXEventSerializer
 import org.scalacheck.Test.{Result, TestCallback}
 import org.scalacheck.{Test, Gen, Arbitrary}
+import org.scalatest.exceptions.TestFailedException
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Succeeded, FlatSpec, AsyncFlatSpec, Matchers}
 import react.{ReactiveLibraryUsage, ReactiveLibrary}
@@ -391,7 +392,7 @@ trait ReactLibraryTests {
       Succeeded
     }
 
-    ignore should "compute map lazily" in {
+    it should "compute map lazily" in {
       val v = Var(0)
       var counter = 0
       val w = v.map { x => counter += 1; x }
@@ -640,6 +641,12 @@ trait ReactLibraryTests {
       //TODO
     }
 
+    it should "support stack traces" in {
+      def f(): Unit =
+        info(new RuntimeException().getStackTrace().map(x => x.toString).reduce(_ + "\n" + _))
+      f()
+    }
+
     it should "play well with ReassignableSignal" in {
       case class Input(value: ReassignableVar[String] = ReassignableVar("hallo"), visible: ReassignableVar[Boolean] = ReassignableVar(false))
 
@@ -673,6 +680,31 @@ trait ReactLibraryTests {
       s.now shouldBe 100
       s2.now shouldBe 100
     }
+
+    it should "work with double-ap" in {
+      val v = Var(1)
+
+      val e = v.map((x: Int) => (y: Int) => (z: Int) => x + y + z).ap(v).ap(v)
+      val l = collectValues(e)
+
+      v := 2
+      v := 3
+      v := 4
+
+      l shouldBe List(3, 6, 9, 12)
+    }
+
+    it should "behave well with flatMap" in {
+      import unsafeImplicits.signalApplicative
+      val v = Var(1)
+      val l = collectValues(Signal.Const(identity[Int] _).flatMap(f => v.map(f)))
+
+      v := 2
+      v := 3
+      v := 4
+
+      l shouldBe List(1, 2, 3, 4)
+    }
   }
 
   def runPropertyTests: Unit = {
@@ -683,29 +715,53 @@ trait ReactLibraryTests {
     import language.postfixOps
 
 
-    val signals: List[Var[Int]] = 0 to 3 map { _ => Var(0) } toList
+    val signals: List[Var[Int]] = 0 to 3 map { i => Var(0) withName(s"Var($i)") } toList
+    val events: List[EventSource[Int]] = 0 to 3 map { i => EventSource[Int] withName(s"EventSource($i)") } toList
 
 
     val signalGen: Gen[Signal[Int]] =
       Gen.oneOf(
-        Gen.posNum[Int].map(_.pure),
+        Gen.posNum[Int].map(z => (z.pure: Signal[Int]).withName(s"Const($z)")),
         Gen.oneOf(signals)
       )
 
     val signalFunGen: Gen[Signal[Int => Int]] =
-      Gen.oneOf[(Int, Int) => Int](
-        (x: Int, y: Int) => x,
-        (x: Int, y: Int) => y,
-        (x: Int, y: Int) => x + y,
-        (x: Int, y: Int) => 0
-      ).flatMap(f =>
-        signalGen.map {
-          _.map(x => (y: Int) => f(x, y))
-        }
-      )
+      Gen.oneOf[((Int, Int) => Int, String)](
+        ((x: Int, y: Int) => x, "left"),
+        ((x: Int, y: Int) => y, "right"),
+        ((x: Int, y: Int) => x + y, "plus"),
+        ((x: Int, y: Int) => 0, "const0")
+      ).flatMap { case (f, descr) =>
+      signalGen.map {
+        z => z.map(x => (y: Int) => f(x, y)).withName(s"$descr(${z.name}, _)")
+      }
+    }
 
     implicit val arbitrarySignal = Arbitrary[reactLibrary.Signal[Int]](signalGen)
     implicit val arbitrarySignalFun = Arbitrary[Signal[Int => Int]](signalFunGen)
+
+    lazy val eventGen: Gen[Event[Int]] =
+      Gen.frequency(
+        (10, Gen.oneOf[Event[Int]](events)),
+        (3, Gen.const(Event.Never))
+        //,(3, Gen.lzy(eventGen).flatMap(x => Gen.lzy(eventGen).map(x.merge(_)))),
+        //(1, Gen.lzy(eventGen).map(_.map(_ + 10)))
+      )
+
+    val eventFunGen: Gen[Event[Int => Int]] =
+      Gen.oneOf[((Int, Int) => Int, String)](
+        ((x: Int, y: Int) => x, "left"),
+        ((x: Int, y: Int) => y, "right"),
+        ((x: Int, y: Int) => x + y, "plus"),
+        ((x: Int, y: Int) => 0, "const0")
+      ).flatMap { case (f, descr) =>
+        eventGen.map {
+          z => z.map(x => (y: Int) => f(x, y)).withName(s"$descr(${z.name}, _)")
+        }
+      }
+
+    implicit val arbitraryEvent = Arbitrary[Event[Int]](eventGen)
+    implicit val arbitaryEventFun = Arbitrary[Event[Int => Int]](eventFunGen)
 
     import language.postfixOps
 
@@ -713,19 +769,23 @@ trait ReactLibraryTests {
     // (ideally, we'd like to return Gen[Boolean])
     implicit def signalEq[A](implicit eqO: Eq[A]): algebra.Eq[Signal[A]] = new Eq[Signal[A]] {
       override def eqv(x: reactLibrary.Signal[A], y: reactLibrary.Signal[A]): Boolean = {
-        if (!eqO.eqv(x.now, y.now))
+        if (!eqO.eqv(x.now, y.now)) {
+          info(s"${x.now} != ${y.now} [values: ${signals.map(_.now)}]")
           return false
+        }
         val l1 = collectValues(x)
         val l2 = collectValues(y)
 
         try {
           1 to 10 foreach { j =>
             signals(j % 4) := (j * 3)
-            if (!eqO.eqv(x.now, y.now))
+            if (!eqO.eqv(x.now, y.now)) {
+              info(s"${x.now} != ${y.now} [values: ${signals.map(_.now)}]")
               return false
+            }
           }
           if (l1 != l2) {
-            println(s"${l1} != ${l2}")
+            info(s"${l1} != ${l2}")
             false
           }
           else
@@ -738,7 +798,27 @@ trait ReactLibraryTests {
       }
     }
 
+    implicit def eventEq[A](implicit eqO: Eq[A]): algebra.Eq[Event[A]] = new Eq[Event[A]] {
+      override def eqv(x: reactLibrary.Event[A], y: reactLibrary.Event[A]): Boolean = {
+        val l1 = collectValues(x)
+        val l2 = collectValues(y)
 
+        try {
+          1 to 10 foreach { j =>
+            events(j % 4) emit (j * 3)
+            if (!(l1.length == l2.length && (l1 zip l2 forall { case (x, y) => eqO.eqv(x, y) }))) {
+              info(s"${l1} != ${l2}")
+              return false
+            }
+          }
+          true
+        }
+        finally {
+          l1.ref.kill()
+          l2.ref.kill()
+        }
+      }
+    }
 
     implicit val intEq: Eq[Int] = new Eq[Int] {
       override def eqv(x: Int, y: Int): Boolean = x == y
@@ -748,20 +828,28 @@ trait ReactLibraryTests {
       override def eqv(x: (Int, Int, Int), y: (Int, Int, Int)): Boolean = x == y
     }
 
-    behavior of "Signal"
-    ApplicativeTests[Signal].applicative[Int, Int, Int].all.properties.foreach {
-      case (name, property) =>
-        it should name in {
-          val seedBaos = new ByteArrayOutputStream()
-
-          val test = Test.check(property) {
-            _.withMinSuccessfulTests(1000)
-          }
-          if(test.passed) {
-            info(test.toString)
-          }
-          assert(test.passed, test)
-        }
-    }
+//    behavior of "Signal"
+//    MonadTests[Signal](unsafeImplicits.signalApplicative).monad[Int, Int, Int].all.properties.foreach {
+//      case (name, property) =>
+//        it should name in {
+//          val test = Test.check(property) {
+//            _.withMinSuccessfulTests(1000)
+//          }
+//          info(org.scalacheck.util.Pretty.pretty(test))
+//          assert(test.passed)
+//        }
+//    }
+//
+//    behavior of "Event"
+//    FlatMapTests[Event](unsafeImplicits.eventApplicative).flatMap[Int, Int, Int].all.properties.foreach {
+//      case (name, property) =>
+//        it should name in {
+//          val test = Test.check(property) {
+//            _.withMinSuccessfulTests(1000)
+//          }
+//          info(org.scalacheck.util.Pretty.pretty(test))
+//          assert(test.passed)
+//        }
+//    }
   }
 }

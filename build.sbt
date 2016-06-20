@@ -14,7 +14,7 @@ lazy val fixScalastyle = Seq(
 )
 
 lazy val commonSettings = Seq(
-  version := "0.1.35",
+  version := "0.1.36-SNAPSHOT",
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8"
@@ -67,8 +67,39 @@ lazy val selfrx = (crossProject in file("implementations/selfrx")).
   jsSettings(jsSettings: _*).jvmSettings(jvmSettings: _*).
   settings(
     name := "reactive-impl-self"
-  ).
-  dependsOn(root % "compile->compile;test->test")
+  ).jsSettings(
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.0"
+  ).dependsOn(root % "compile->compile;test->test")
 
 lazy val selfrxJS = selfrx.js
 lazy val selfrxJVM = selfrx.jvm
+
+lazy val usageSelfrx = (crossProject in file("usage/selfrx")).
+  jsSettings(jsSettings: _*).jvmSettings(jvmSettings: _*).
+  settings(
+    name := "reactive-usage-selfrx"
+  ).
+  dependsOn(selfrx)
+
+lazy val usageSelfrxJVM = usageSelfrx.jvm
+lazy val usageSelfrxJS = usageSelfrx.js
+
+lazy val debugSelfrx = (crossProject in file("usage/debug-selfrx")).
+  jsSettings(jsSettings: _*).jvmSettings(jvmSettings: _*).
+  settings(
+    name := "reactive-usage-selfrx-debug"
+  ).
+  dependsOn(selfrx)
+
+lazy val debugSelfrxJVM = debugSelfrx.jvm
+lazy val debugSelfrxJS = debugSelfrx.js
+
+lazy val timeTravelingExample = (project in file("example")).
+  enablePlugins(ScalaJSPlugin).
+  settings(jsSettings).
+  settings(
+    name := "example",
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.0",
+    libraryDependencies += "be.doeraene" %%% "scalajs-jquery" % "0.9.0"
+  ).
+  dependsOn(selfrxJS)

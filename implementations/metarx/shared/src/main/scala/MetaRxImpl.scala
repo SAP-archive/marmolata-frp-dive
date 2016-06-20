@@ -4,13 +4,13 @@ import cats.{FlatMap, Monad}
 import org.scalacheck.Prop.Exception
 import pl.metastack.metarx
 import pl.metastack.metarx.{Cancelable => MetaCancelable, _}
-import react.impls.helper.{DefaultEventObject, ReactiveLibraryImplementationHelper, DefaultSignalObject, NonCancelable}
+import react.impls.helper._
 import react.ReactiveLibrary
 import _root_.react.ReactiveLibrary._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEventObject with ReactiveLibraryImplementationHelper {
+trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEventObject with DefaultReassignableVar with ReactiveLibraryImplementationHelper {
   metaRxImpl =>
 
   def implementationName: String = "MetaRxImpl"
@@ -41,7 +41,7 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
 
   type Signal[+A] = SignalImpl[A, _ <: A]
 
-  object signalApplicative extends SignalOperationsTrait[Signal] with FlatMap[Signal] {
+  object signalApplicative extends SignalOperationsTrait[Signal] with Monad[Signal] {
     def pure[A](x: A): SignalImpl[A, _ <: A] = {
       new SignalImpl(metarx.Var(x))
     }

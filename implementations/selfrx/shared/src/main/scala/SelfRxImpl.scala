@@ -1,30 +1,19 @@
 package reactive.selfrx
 
-import cats.{Apply, FlatMap}
-import react.ReactiveLibrary
+import java.time.LocalDateTime
+
+import cats.{Monad, Apply, FlatMap}
+import react.{ReactiveDeclaration, ReactiveLibrary}
 import react.ReactiveLibrary._
-import react.impls.helper.ReactiveLibraryImplementationHelper
+import react.impls.helper.{DefaultReassignableVar, ReactiveLibraryImplementationHelper}
 import reactive.selfrx
 
-import scala.collection.immutable.{HashMap, HashSet}
+import scala.collection.immutable.{SortedMap, HashMap, HashSet}
 import scala.concurrent.{ExecutionContext, Future}
 
 class SelfRxException(message: String) extends Exception(message)
 
-
-trait SelfRxLogging {
-  def createPrimitive(p: Primitive)
-}
-
-trait SelfRxLoggingHelper {
-  val logger: SelfRxLogging
-}
-
-object NoLogging extends SelfRxLogging {
-  override def createPrimitive(p: Primitive): Unit = {}
-}
-
-class TriggerUpdate {
+class TriggerUpdate private (recordingSlice: RecordingSliceBuilder) {
   def addEvent[A](event: Event[A], value: A) = {
     currentEvents += ((event, value))
   }
@@ -33,7 +22,7 @@ class TriggerUpdate {
     currentEvents.get(event).map(_.asInstanceOf[A])
   }
 
-  var currentlyEvaluating: Map[Int, HashSet[Primitive]] = Map.empty
+  var currentlyEvaluating: SortedMap[Int, HashSet[Primitive]] = SortedMap.empty
   var finishedEvaluating: HashSet[Primitive] = HashSet.empty
   var currentEvents: HashMap[Primitive, Any] = HashMap.empty
 
@@ -51,8 +40,10 @@ class TriggerUpdate {
             insert(p)
           }
           else {
-            p.recalculateRecursively(this)
-            finishedEvaluating += p
+            if (recordingSlice.currentRecordingMode == RecordingMode.Record || p.evaluateDuringPlayback()) {
+              p.recalculateRecursively(this)
+              finishedEvaluating += p
+            }
           }
         }
         true
@@ -66,20 +57,90 @@ class TriggerUpdate {
   def finishedRecalculating(p: Primitive): Boolean = {
     finishedEvaluating.contains(p)
   }
-}
 
-object TriggerUpdate {
-  def doUpdate(p: Primitive*): Unit = {
-    val t = new TriggerUpdate()
-    p.foreach { t.insert(_) }
-    t.evaluate()
+  def addRecording[A](p: RecordForPlayback[A], before: A, after: A): Unit = {
+    recordingSlice.addPrimitiveChange(p, before, after)
   }
 }
 
-trait Primitive extends Object {
+object TriggerUpdate {
+  def doUpdate(recordings: TriggerUpdate => Unit, p: Primitive*)(implicit recording: Recording): Unit = {
+    doPrimitiveUpdate { t =>
+      recordings(t)
+      p.foreach { t.insert(_) }
+    }
+  }
+
+  def doPrimitiveUpdate(update: TriggerUpdate => Unit)(implicit recording: Recording): Unit = {
+    val r = recording.startNewRecording()
+    if (r.currentRecordingMode == RecordingMode.Record) {
+      try {
+        doPrimitiveUpdateUnconditionally(r)(update)
+      }
+      finally {
+        recording.finishCurrentRecording(r)
+      }
+    }
+  }
+
+  def doPrimitiveUpdateUnconditionally(r: RecordingSliceBuilder)(update: TriggerUpdate => Unit): Unit = {
+    val triggerUpdate = new TriggerUpdate(r)
+    update(triggerUpdate)
+    triggerUpdate.evaluate()
+  }
+}
+
+trait RecordingSliceBuilder {
+  def addPrimitiveChange[A](p: RecordForPlayback[A], before: A, after: A)
+  def currentRecordingMode: RecordingMode
+}
+
+trait Recording {
+  def startNewRecording(): RecordingSliceBuilder
+  def finishCurrentRecording(recording: RecordingSliceBuilder)
+}
+
+sealed trait RecordingMode
+
+object RecordingMode {
+  object Record extends RecordingMode
+  object Playback extends RecordingMode
+}
+
+
+object NoRecordingSlice extends RecordingSliceBuilder {
+  override def addPrimitiveChange[A](p: RecordForPlayback[A], before: A, after: A): Unit = {}
+  override def currentRecordingMode: RecordingMode = RecordingMode.Playback
+}
+
+object NoRecording extends Recording {
+  override def startNewRecording(): RecordingSliceBuilder = NoRecordingSlice
+  override def finishCurrentRecording(recording: RecordingSliceBuilder): Unit = {}
+}
+
+trait PrettyPrimitive extends Nameable {
+  self: Primitive =>
+  override var name: String = ""
+
+  override def toString: String = s"$name+$level (${super.toString})"
+}
+
+// Marker interface for signals that have to record something to be replayed
+trait RecordForPlayback[A] {
+  this: Primitive =>
+
+  def playback(x: A, strategy: TriggerUpdate)
+
+  def record(before: A, after: A, triggerUpdate: TriggerUpdate): Unit = {
+    triggerUpdate.addRecording(this, before, after)
+  }
+}
+
+trait Primitive extends Object with PrettyPrimitive {
   def becomeOrphan(): Unit
   def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit
   def recalculateRecursively(strategy: TriggerUpdate): Unit
+  def evaluateDuringPlayback(): Boolean
 
   var level: Int = 0
   private var children: HashSet[Primitive] = HashSet.empty
@@ -219,9 +280,11 @@ trait Signal[A] extends Primitive with SignalTrait[A] {
     f(now)
     new ObservableCancel(obs)
   }
+
+  override def evaluateDuringPlayback(): Boolean = true
 }
 
-trait Observable {
+trait Observable extends Nameable {
   def kill(): Unit
 }
 
@@ -237,6 +300,8 @@ class ObservableSignal[A](s: Signal[A], f: A => Unit) extends Primitive with Obs
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
 
   def kill(): Unit = removeParents()
+
+  override def evaluateDuringPlayback(): Boolean = true
 }
 
 class ObservableEvent[A](e: Event[A], f: A => Unit) extends Primitive with Observable {
@@ -253,30 +318,40 @@ class ObservableEvent[A](e: Event[A], f: A => Unit) extends Primitive with Obser
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
 
   def kill(): Unit = removeParents()
+
+  override def evaluateDuringPlayback(): Boolean = false
 }
 
-class Variable[A](var init: A) extends Signal[A] with VarTrait[A] {
+class Variable[A](var init: A)(implicit recording: Recording) extends Signal[A] with VarTrait[A] with RecordForPlayback[A] {
   override protected def recalculate(recursively: Option[TriggerUpdate]): A = init
 
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
 
   override def update(newVal: A): Unit = {
+    val last = init
     init = newVal
-    TriggerUpdate.doUpdate(this)
+    if (last != init) {
+      TriggerUpdate.doUpdate(record(last, newVal, _), this)
+    }
   }
+
+  override def playback(x: A, strategy: TriggerUpdate): Unit = { init = x; updateValueTo(init, strategy) }
 }
 
-class ReassignableVariable[A](var init2: Signal[A]) extends Signal[A] with VarTrait[A] {
-
+//TODO: record for playback only when subscribe/update
+class ReassignableVariable[A](var init2: Signal[_ <: A])(implicit recording: Recording)
+  extends Signal[A] with ReassignableVarTrait[A, ({type L[A] = Signal[_ <: A]})#L]
+  with RecordForPlayback[Signal[_ <: A]] {
   override def update(newValue: A): Unit = subscribe(new ConstSignal(newValue))
 
-  def subscribe(s: Signal[A]): Unit = {
+  def subscribe(s: Signal[_ <: A]): Unit = {
+    val oldInit2 = init2
     init2 = s
 
     if (!isOrphan) {
       replaceParents(None, init2)
-      TriggerUpdate.doUpdate(this)
     }
+    TriggerUpdate.doUpdate(record(oldInit2, init2, _), this)
   }
 
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
@@ -285,13 +360,27 @@ class ReassignableVariable[A](var init2: Signal[A]) extends Signal[A] with VarTr
 
   override protected def recalculate(recusively: Option[TriggerUpdate]): A =
     init2.now
+
+  override def toSignal: Signal[A] = this
+
+  override def playback(x: Signal[_ <: A], strategy: TriggerUpdate): Unit = {
+    init2 = x
+    if (!isOrphan) {
+      replaceParents(None, init2)
+    }
+    updateValueTo(init2.now, strategy)
+  }
 }
 
 class ObservableCancel(obs: Observable) extends Cancelable {
   override def kill(): Unit = obs.kill()
+
+  override def name: String = obs.name
+
+  override def name_=(s: String): Unit = obs.name_=(s)
 }
 
-class MappedSignal[A, B](s: Signal[A], f: A => B) extends Signal[B] {
+class MappedSignal[A, B](s: Signal[_ <: A], f: A => B) extends Signal[B] {
   override protected def recalculate(recursively: Option[TriggerUpdate]): B = {
     f(s.now)
   }
@@ -299,11 +388,9 @@ class MappedSignal[A, B](s: Signal[A], f: A => B) extends Signal[B] {
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
     addParent(s, currentTrigger)
   }
-
-  //override def toString: String = s"MappedSignal($s, $f) ${super.toString}"
 }
 
-class ProductSignal[A, B](a: Signal[A], b: Signal[B]) extends Signal[(A, B)] {
+class ProductSignal[A, B](a: Signal[_ <: A], b: Signal[_ <: B]) extends Signal[(A, B)] {
   override protected def recalculate(recursively: Option[TriggerUpdate]): (A, B) = {
     (a.now, b.now)
   }
@@ -312,19 +399,15 @@ class ProductSignal[A, B](a: Signal[A], b: Signal[B]) extends Signal[(A, B)] {
     addParent(a, currentTrigger)
     addParent(b, currentTrigger)
   }
-
-  //override def toString: String = s"ProductSignal($a, $b) ${super.toString}"
 }
 
 class ConstSignal[A](value: A) extends Signal[A] {
   override protected def recalculate(recusively: Option[TriggerUpdate]): A = value
 
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
-
-  //override def toString: String = s"ConstSignal($value) ${super.toString}"
 }
 
-class BindSignal[A](a: Signal[Signal[A]]) extends Signal[A] {
+class BindSignal[A](a: Signal[_ <: Signal[_ <: A]]) extends Signal[A] {
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
     val newSignal = a.now
     if (hasParent(newSignal)) {
@@ -343,9 +426,8 @@ class BindSignal[A](a: Signal[Signal[A]]) extends Signal[A] {
 
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
     addParent(a, currentTrigger)
+    addParent(a.now, currentTrigger)
   }
-
-  //override def toString: String = s"BindSignal($a) ${super.toString}"
 }
 
 trait Event[A] extends Primitive with EventTrait[A] {
@@ -359,14 +441,16 @@ trait Event[A] extends Primitive with EventTrait[A] {
     val obs = new ObservableEvent(this, f)
     new ObservableCancel(obs)
   }
+
+  override def evaluateDuringPlayback(): Boolean = false
 }
 
-class EventSource[A] extends Event[A] with EventSourceTrait[A] {
+class EventSource[A](implicit recording: Recording) extends Event[A] with EventSourceTrait[A] {
   override def emit(value: A): Unit = {
-    val triggerEvent = new TriggerUpdate()
-    triggerEvent.insert(this)
-    triggerEvent.addEvent(this, value)
-    triggerEvent.evaluate()
+    val triggerEvent = TriggerUpdate.doPrimitiveUpdate { triggerEvent =>
+      triggerEvent.insert(this)
+      triggerEvent.addEvent(this, value)
+    }
   }
 
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
@@ -376,7 +460,7 @@ class EventSource[A] extends Event[A] with EventSourceTrait[A] {
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
 }
 
-class MappedEvent[A, B](a: Event[A], f: A => B) extends Event[B] {
+class MappedEvent[A, B](a: Event[_ <: A], f: A => B) extends Event[B] {
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
     addParent(a, currentTrigger)
   }
@@ -387,12 +471,12 @@ class MappedEvent[A, B](a: Event[A], f: A => B) extends Event[B] {
   }
 }
 
-class FutureEvent[A](f: Future[A])(implicit ec: ExecutionContext) extends Event[A] {
+class FutureEvent[A](f: Future[A])(implicit ec: ExecutionContext, recording: Recording) extends Event[A] {
   f.onSuccess { case value =>
-    val triggerEvent = new TriggerUpdate()
-    triggerEvent.insert(this)
-    triggerEvent.addEvent(this, value)
-    triggerEvent.evaluate()
+    val triggerEvent = TriggerUpdate.doPrimitiveUpdate { triggerEvent =>
+      triggerEvent.insert(this)
+      triggerEvent.addEvent(this, value)
+    }
   }
 
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
@@ -402,7 +486,7 @@ class FutureEvent[A](f: Future[A])(implicit ec: ExecutionContext) extends Event[
   }
 }
 
-class MergeEvent[A](e1: Event[A], e2: Event[A]) extends Event[A] {
+class MergeEvent[A](e1: Event[_ <: A], e2: Event[_ <: A]) extends Event[A] {
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
     addParent(e1, currentTrigger)
     addParent(e2, currentTrigger)
@@ -411,7 +495,7 @@ class MergeEvent[A](e1: Event[A], e2: Event[A]) extends Event[A] {
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
     val o1 = strategy.getEvent(e1)
     val o2 = strategy.getEvent(e2)
-    val e = (o1, o2) match {
+    val e: A = (o1, o2) match {
       case (Some(x), _) => x
       case (None, Some(y)) => y
       case (None, None) => throw new SelfRxException("recalculate without event in merge")
@@ -455,19 +539,24 @@ object Never extends Event[Nothing] {
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {}
 }
 
-class NeverG[A] extends Event[A] {
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
-
-  override def recalculateRecursively(strategy: TriggerUpdate): Unit = {}
-}
 
 // TODO: this is generally leaking, how could we avoid this?
-class SignalFromEvent[A](a: Event[A], init: A) extends Signal[A] {
+// (this may be possible with caching event values recursively)
+class SignalFromEvent[A](a: Event[_ <: A], init: A) extends Signal[A] with RecordForPlayback[A] {
   //since Events don't cache their events, but Signals do, we have to trigger this event
   //even if it isn't listened to currently
   override def becomeOrphan(): Unit = {}
 
   addParent(a, None)
+
+  override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
+    val newValue = recalculate(Some(strategy))
+    val lastValue = now
+    if (newValue != lastValue) {
+      record(lastValue, newValue, strategy)
+    }
+    updateValueTo(newValue, strategy)
+  }
 
   override protected def recalculate(recursively: Option[TriggerUpdate]): A = {
     recursively match {
@@ -477,9 +566,13 @@ class SignalFromEvent[A](a: Event[A], init: A) extends Signal[A] {
   }
 
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
+
+  override def playback(x: A, strategy: TriggerUpdate): Unit = {
+    updateValueTo(x, strategy)
+  }
 }
 
-class EventFromSignal[A](s: Signal[A]) extends Event[A] {
+class EventFromSignal[A](s: Signal[_ <: A]) extends Event[A] {
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
     addParent(s, currentTrigger)
   }
@@ -490,9 +583,10 @@ class EventFromSignal[A](s: Signal[A]) extends Event[A] {
   }
 }
 
-class EventInsideSignal[A](s: Signal[Event[A]]) extends Event[A] {
+class EventInsideSignal[A](s: Signal[Event[_ <: A]]) extends Event[A] {
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
     addParent(s, currentTrigger)
+    addParent(s.now, currentTrigger)
   }
 
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
@@ -510,25 +604,24 @@ class EventInsideSignal[A](s: Signal[Event[A]]) extends Event[A] {
   }
 }
 
-object Helpers {
-  def mappedSignal[Z](x: Signal[_ <: Z]): selfrx.Signal[Z] = {
-    new MappedSignal(x, identity[Z])
-  }
-
-  def mappedEvent[Z](x: Event[ _ <: Z]): selfrx.Event[Z] = {
-    new MappedEvent(x, identity[Z])
-  }
-}
-
-trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelper with SelfRxLoggingHelper {
+trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelper {
   self =>
+  implicit def recording: Recording = NoRecording
+
   override type Event[+A] = reactive.selfrx.Event[_ <: A]
   override type Signal[+A] = reactive.selfrx.Signal[_ <: A]
   override type Var[A] = reactive.selfrx.Variable[A]
   override type EventSource[A] = reactive.selfrx.EventSource[A]
 
+  override type ReassignableVar[A] = ReassignableVariable[A]
+  override object ReassignableVar extends ReassignableVarCompanionObject[ReassignableVar, Signal] {
+    override def apply[A](init: A): ReassignableVariable[A] = new ReassignableVariable[A](Signal.Const(init))
+
+    override def apply[A](init: selfrx.Signal[_ <: A]): ReassignableVariable[A] = new ReassignableVariable[A](init)
+  }
+
   override def toSignal[A](init: A, event: Event[A]): Signal[A] = {
-    new SignalFromEvent(new MappedEvent(event, identity[A]), init)
+    new SignalFromEvent(event, init)
   }
   override def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): self.Event[A] =
     new FutureEvent(f)
@@ -543,7 +636,7 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
 
   override implicit object eventApplicative extends EventOperationsTrait[Event] {
     override def merge[A](x1: Event[A], x2: Event[A]): selfrx.Event[A] =
-      new MergeEvent[A](new MappedEvent(x1, identity[A]), new MappedEvent(x2, identity[A]))
+      new MergeEvent[A](x1, x2)
 
     override def map[A, B](fa: Event[A])(f: (A) => B): selfrx.Event[B] =
       new MappedEvent(fa, f)
@@ -555,7 +648,6 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
   override implicit object Var extends VarCompanionObject[Var] {
     override def apply[A](init: A): Variable[A] = {
       val result = new Variable(init)
-      logger.createPrimitive(result)
       result
     }
   }
@@ -563,11 +655,15 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
   object unsafeImplicits extends UnsafeImplicits {
     override implicit object eventApplicative extends FlatMap[Event] with EventOperationsTrait[Event] {
       override def flatMap[A, B](fa: Event[A])(f: (A) => Event[B]): Event[B] = {
-        val result = signalApplicative.map(toSignal(None, eventApplicative.map(fa)(Some(_)))) {
-          _.map(f).getOrElse(Never)
-        }
+        val result: selfrx.Signal[Event[B]] =
+          new SignalFromEvent[Event[B]](new MappedEvent[A, Event[B]](fa, f), selfrx.Never)
+        new EventInsideSignal[B](result)
+      }
 
-        new EventInsideSignal(new MappedSignal[Event[B], selfrx.Event[B]](Helpers.mappedSignal(result), Helpers.mappedEvent[B]))
+      override def flatten[A](ffa: selfrx.Event[_ <: selfrx.Event[_ <: A]]): selfrx.Event[_ <: A] = {
+        new EventInsideSignal[A](
+          new SignalFromEvent[Event[A]](ffa, selfrx.Never)
+        )
       }
 
       override def map[A, B](fa: selfrx.Event[_ <: A])(f: (A) => B): selfrx.Event[_ <: B] = {
@@ -580,18 +676,17 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
       override def merge[A](x1: selfrx.Event[_ <: A], x2: selfrx.Event[_ <: A]): selfrx.Event[_ <: A] =
         self.eventApplicative.merge(x1, x2)
     }
-    override implicit val signalApplicative: FlatMap[Signal] with SignalOperationsTrait[Signal] = self.signalApplicative
+    override implicit val signalApplicative: Monad[Signal] with SignalOperationsTrait[Signal] = self.signalApplicative
   }
 
   override object EventSource extends EventSourceCompanionObject[Event, EventSource] {
     override def apply[A](): EventSource[A] = {
       val result = new selfrx.EventSource[A]()
-      logger.createPrimitive(result)
       result
     }
   }
 
-  override implicit object signalApplicative extends FlatMap[Signal] with SignalOperationsTrait[Signal] {
+  override implicit object signalApplicative extends Monad[Signal] with SignalOperationsTrait[Signal] {
     override def pure[A](x: A): selfrx.Signal[A] = new ConstSignal(x)
 
     override def ap[A, B](ff: Signal[(A) => B])(fa: Signal[A]): Signal[B] =
@@ -602,18 +697,15 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
       new MappedSignal(fa, f)
 
     def flatMap[A, B](fa: Signal[A])(f: (A) => Signal[B]): Signal[B] = {
-      new BindSignal(new MappedSignal(fa, (x: A) => {
-        new MappedSignal(f(x), identity[B]): selfrx.Signal[B]
-      }))
+      new BindSignal[B](new MappedSignal[A, selfrx.Signal[_ <: B]](fa, f))
     }
 
     override def flatten[A](ffa: selfrx.Signal[_ <: selfrx.Signal[_ <: A]]): selfrx.Signal[_ <: A] = {
-      new BindSignal(Helpers.mappedSignal[selfrx.Signal[A]](signalApplicative.map(ffa)(Helpers.mappedSignal[A])))
+      new BindSignal[A](ffa)
     }
 
-    //make sure we don't use flatMap if not absolutely necessary
     override def product[A, B](fa: Signal[A], fb: Signal[B]): Signal[(A, B)] =
-      super[SignalOperationsTrait].product(fa, fb)
+      new ProductSignal[A, B](fa, fb)
   }
 
   override object Signal extends SignalCompanionObject[Signal] {
@@ -623,4 +715,8 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
   object Event extends EventCompanionObject[Event] {
     override def Never: selfrx.Event[Nothing] = selfrx.Never
   }
+}
+
+final class ReactiveObject extends react.ReactiveObject {
+  val library: ReactiveDeclaration = new SelfRxImpl with ReactiveDeclaration
 }

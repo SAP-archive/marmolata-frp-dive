@@ -1,7 +1,8 @@
 import org.scalatest.FlatSpec
 import react.{ReactiveLibrary, ReactiveLibraryUsage}
 import react.Rx.TestImplementation
+import reactive.selfrx.SelfRxImpl
 
 class SelfRxTest extends FlatSpec with TestImplementation {
-  def reactLibrary_ = reactive.library
+  lazy val reactLibrary_ = new SelfRxImpl with ReactiveLibraryUsage
 }

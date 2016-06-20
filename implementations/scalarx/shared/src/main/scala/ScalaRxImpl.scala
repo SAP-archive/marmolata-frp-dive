@@ -3,7 +3,9 @@ package react.impls
 import cats.{FlatMap, Monad}
 import react.ReactiveLibrary
 import react.ReactiveLibrary._
-import react.impls.helper.{DefaultEventObject, ReactiveLibraryImplementationHelper, DefaultSignalObject, NonCancelable}
+import react.impls.helper.NonCancelable
+import react.impls.helper.ReactiveLibraryImplementationHelper
+import react.impls.helper._
 import rx._
 import rx.async.FutureCombinators
 
@@ -37,7 +39,7 @@ case class CompareUnequal[+A](get: A) {
   def map[B](f: A => B): CompareUnequal[B] = CompareUnequal(f(get))
 }
 
-trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEventObject with ReactiveLibraryImplementationHelper {
+trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultReassignableVar with DefaultEventObject with ReactiveLibraryImplementationHelper {
   scalaRxImpl =>
   def implementationName: String = "Scala.Rx wrapper"
 
@@ -157,22 +159,12 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultE
 
     override def now: A = wrapped.now
 
-//    override def map[B](f: (A) => B): Signal[B] =
-//      new Signal(wrapped.map(f))
-//
-//    override def flatMap[B](f: (A) => Signal[B]): Signal[B] = {
-//      def wrappedF(a: A) = f(a).wrapped
-//      new Signal(wrapped.flatMap(wrappedF))
-//    }
-//
-//    override def filter(f: A => Boolean): Signal[A] = new Signal(wrapped.filter(f))
-
     override def observe(f: (A) => Unit): Cancelable = {
       obsToObsWrapper(wrapped.trigger { f(wrapped.now) })
     }
   }
 
-  implicit object signalApplicative extends SignalOperationsTrait[Signal] with FlatMap[Signal] {
+  implicit object signalApplicative extends SignalOperationsTrait[Signal] with Monad[Signal] {
     override def pure[A](x: A): Signal[A] = {
       new Signal(Rx { x })
     }
@@ -246,6 +238,6 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultE
 
   object unsafeImplicits extends UnsafeImplicits {
     implicit val eventApplicative: EventOperationsTrait[Event] with FlatMap[Event] = scalaRxImpl.eventApplicative
-    implicit val signalApplicative: SignalOperationsTrait[Signal] with FlatMap[Signal] = scalaRxImpl.signalApplicative
+    implicit val signalApplicative: SignalOperationsTrait[Signal] with Monad[Signal] = scalaRxImpl.signalApplicative
   }
 }

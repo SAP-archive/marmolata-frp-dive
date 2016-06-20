@@ -32,6 +32,15 @@ object ReactiveLibrary {
     def Never: Event[Nothing]
   }
 
+  trait Nameable {
+    final def withName(s: String): this.type = {
+      name = s
+      this
+    }
+    def name: String = ""
+    def name_=(s: String): Unit = {}
+  }
+
   trait Observable[+A] {
     /**
       * observe the associated signal or event
@@ -58,7 +67,7 @@ object ReactiveLibrary {
     def observe(f: A => Unit): Cancelable
   }
 
-  trait SignalTrait[+A] extends Observable[A] {
+  trait SignalTrait[+A] extends Observable[A] with Nameable {
     /**
       * returns the current value of this Signal.
       * It's generally better to use composition methods like Functor#map, Cartesian#product
@@ -72,7 +81,7 @@ object ReactiveLibrary {
     final def get: A = now
   }
 
-  trait EventTrait[+A] extends Observable[A]
+  trait EventTrait[+A] extends Observable[A] with Nameable
 
   trait EventOperationsTrait[F[+_]] extends Functor[F] with Filterable[F] with Mergeable[F]
   trait SignalOperationsTrait[F[+_]] extends Applicative[F]
@@ -93,6 +102,17 @@ object ReactiveLibrary {
     final def := (newValue: A): Unit = update(newValue)
   }
 
+  trait ReassignableVarTrait[A, Signal[_]] extends VarTrait[A] {
+    def subscribe(s: Signal[A]): Unit
+    def toSignal: Signal[A]
+  }
+
+  // added <: SignalTrait here to avoid that apply methods don't differ after type erasure
+  trait ReassignableVarCompanionObject[ReassignableVar[_], Signal[_] <: SignalTrait[_]] {
+    def apply[A](init: A): ReassignableVar[A]
+    def apply[A](init: Signal[A]): ReassignableVar[A]
+  }
+
   trait EventSourceTrait[A] {
     def emit(value: A): Unit
 
@@ -100,7 +120,7 @@ object ReactiveLibrary {
     final def := (value: A): Unit = emit(value)
   }
 
-  trait Cancelable {
+  trait Cancelable extends Nameable {
     /** stop calling the associated function of the observe method that returned this object */
     def kill(): Unit
   }
@@ -135,7 +155,7 @@ trait ReactiveLibrary {
 
   trait UnsafeImplicits {
     implicit val eventApplicative: FlatMap[Event] with EventOperationsTrait[Event]
-    implicit val signalApplicative: FlatMap[Signal] with SignalOperationsTrait[Signal]
+    implicit val signalApplicative: Monad[Signal] with SignalOperationsTrait[Signal]
   }
 
   // use these with care as these operations are often leaking
@@ -146,6 +166,9 @@ trait ReactiveLibrary {
 
   val Signal: SignalCompanionObject[Signal]
   val Event: EventCompanionObject[Event]
+
+  type ReassignableVar[A] <: ReassignableVarTrait[A, Signal]
+  val ReassignableVar: ReassignableVarCompanionObject[ReassignableVar, Signal]
 
   protected[react] def toSignal[A] (init: A, event: Event[A]): Signal[A]
   protected[react] def toEvent[A] (signal: Signal[A]): Event[A]
