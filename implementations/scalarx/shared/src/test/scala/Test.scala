@@ -4,4 +4,5 @@ import react.Rx.TestImplementation
 
 class ScalaRxTest extends FlatSpec with TestImplementation {
    def reactLibrary_ = reactive.library
+   override def shouldRunPropertyTests: Boolean = false
 }

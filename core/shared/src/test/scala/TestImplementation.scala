@@ -8,6 +8,10 @@ import scala.concurrent.Future
 
 trait TestImplementation extends Matchers with ReactLibraryTests {
   self: FlatSpec =>
+  def shouldRunPropertyTests: Boolean
+
   reactLibrary.implementationName should behave like runLibraryTests
-  it should behave like runPropertyTests
+  if (shouldRunPropertyTests) {
+    it should behave like runPropertyTests
+  }
 }

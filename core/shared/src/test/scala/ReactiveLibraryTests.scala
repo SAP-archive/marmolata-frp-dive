@@ -842,28 +842,28 @@ trait ReactLibraryTests {
       override def eqv(x: (Int, Int, Int), y: (Int, Int, Int)): Boolean = x == y
     }
 
-//    behavior of "Signal"
-//    MonadTests[Signal](unsafeImplicits.signalApplicative).monad[Int, Int, Int].all.properties.foreach {
-//      case (name, property) =>
-//        it should name in {
-//          val test = Test.check(property) {
-//            _.withMinSuccessfulTests(1000)
-//          }
-//          info(org.scalacheck.util.Pretty.pretty(test))
-//          assert(test.passed)
-//        }
-//    }
-//
-//    behavior of "Event"
-//    FlatMapTests[Event](unsafeImplicits.eventApplicative).flatMap[Int, Int, Int].all.properties.foreach {
-//      case (name, property) =>
-//        it should name in {
-//          val test = Test.check(property) {
-//            _.withMinSuccessfulTests(1000)
-//          }
-//          info(org.scalacheck.util.Pretty.pretty(test))
-//          assert(test.passed)
-//        }
-//    }
+    behavior of "Signal"
+    MonadTests[Signal](unsafeImplicits.signalApplicative).monad[Int, Int, Int].all.properties.foreach {
+      case (name, property) =>
+        it should name in {
+          val test = Test.check(property) {
+            _.withMinSuccessfulTests(1000)
+          }
+          info(org.scalacheck.util.Pretty.pretty(test))
+          assert(test.passed)
+        }
+    }
+
+    behavior of "Event"
+    FlatMapTests[Event](unsafeImplicits.eventApplicative).flatMap[Int, Int, Int].all.properties.foreach {
+      case (name, property) =>
+        it should name in {
+          val test = Test.check(property) {
+            _.withMinSuccessfulTests(1000)
+          }
+          info(org.scalacheck.util.Pretty.pretty(test))
+          assert(test.passed)
+        }
+    }
   }
 }
