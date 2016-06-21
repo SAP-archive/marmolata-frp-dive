@@ -13,7 +13,7 @@ trait HasUnderlying[+A] {
   def under: A
 }
 
-class DebugLayer(underlying: ReactiveLibrary)
+class DebugLayer(protected val underlying: ReactiveLibrary)
   extends ReactiveLibrary with ReactiveLibraryImplementationHelper {
   self =>
 

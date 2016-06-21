@@ -392,6 +392,20 @@ trait ReactLibraryTests {
       Succeeded
     }
 
+    it should "allow exceptions 2" in {
+      val v = Var(0)
+      val w = v.map { x => if (x == 7) throw new Exception("Hi") }
+
+      try {
+        w.observe(_ => Unit)
+      }
+      catch {
+        case _: Exception =>
+      }
+
+      v := 7
+    }
+
     it should "compute map lazily" in {
       val v = Var(0)
       var counter = 0

@@ -110,7 +110,7 @@ object RecordingMode {
 
 object NoRecordingSlice extends RecordingSliceBuilder {
   override def addPrimitiveChange[A](p: RecordForPlayback[A], before: A, after: A): Unit = {}
-  override def currentRecordingMode: RecordingMode = RecordingMode.Playback
+  override def currentRecordingMode: RecordingMode = RecordingMode.Record
 }
 
 object NoRecording extends Recording {

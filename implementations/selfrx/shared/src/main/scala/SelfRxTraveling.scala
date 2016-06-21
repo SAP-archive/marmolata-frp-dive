@@ -6,7 +6,7 @@ import java.time.LocalTime
 
 import react.ReactiveLibrary.Nameable
 import react.debug.{HasUnderlying, DebugLayer}
-import react.selfrx.debugger.Debugger.{GraphEdges, GraphNodes}
+import react.selfrx.debugger.Debugger.{OtherSignal, MappedSignal, GraphEdges, GraphNodes}
 import reactive.selfrx._
 
 import scala.collection.immutable.HashMap
@@ -113,7 +113,7 @@ class RecordedSelfRxImpl extends SelfRxImpl {
 }
 
 trait DebuggerSelfRxImpl extends DebugLayer with DebugSelfRxImplJavaScriptInterface {
-  val debugger = new Debugger()
+  val debugger: Debugger = new Debugger()
 
   override def onNew(u: HasUnderlying[Nameable]): Unit = {
     super.onNew(u)
@@ -126,7 +126,36 @@ trait DebuggerSelfRxImpl extends DebugLayer with DebugSelfRxImplJavaScriptInterf
 }
 
 object Debugger {
-  case class GraphNodes(id: String, label: String)
+  sealed trait GraphNodeType
+  sealed trait Signal extends GraphNodeType
+  object Var extends Signal
+  object MappedSignal extends Signal
+  object OtherSignal extends Signal
+  object ReassignableVar extends Signal
+
+  sealed trait Event extends GraphNodeType
+  object EventFromSignal extends Event
+  object EventSource extends Event
+  object OtherEvent extends Event
+
+  object Observable extends GraphNodeType
+
+  object Other extends GraphNodeType
+
+
+  def colorOfNode(graphNodeType: GraphNodeType): String = {
+    graphNodeType match {
+      case _: Signal => "#FF0000"
+      case _: Event => "#00FF00"
+      case Observable => "#0000FF"
+      case Other => "#000000"
+    }
+  }
+
+
+  case class NodeAggregate(nrNodes: Int) extends GraphNodeType
+
+  case class GraphNodes(id: String, label: String, detailed: String, typeOfNode: GraphNodeType)
 
   case class GraphEdges(from: String, to: String)
 
@@ -154,7 +183,7 @@ class Debugger extends JavaScriptInterface {
   }
 
   def drawCurrent(into: String => Unit): Unit = {
-    val g = currentGraph()
+    val g = currentGraph(Some.apply)
 
     into(s"digraph selfrximage {\n")
     g.nodes.foreach { x => into(s"${x.id} [label=" + "\"" + x.label + "\"]\n") }
@@ -162,11 +191,16 @@ class Debugger extends JavaScriptInterface {
     into(s"}\n")
   }
 
-  def currentGraph(): Debugger.GraphRepresentation = {
+  def currentGraph(filterNodes: String => Option[String]): Debugger.GraphRepresentation = {
     val allEle: mutable.HashMap[Primitive, Int] = mutable.HashMap.empty
-    var toInsert = elements.toList
+    val eleNames: mutable.HashMap[Primitive, String] = mutable.HashMap.empty
+    var toInsert: List[Primitive] = List.empty
     elements foreach { x =>
-      allEle += ((x, allEle.size))
+      filterNodes(x.name).map { s =>
+        allEle += ((x, allEle.size))
+        eleNames += ((x, s))
+        toInsert = x +: toInsert
+      }
     }
 
     val countImportant = allEle.size
@@ -219,10 +253,13 @@ class Debugger extends JavaScriptInterface {
     }
 
     val unimportantReductions: mutable.HashMap[Int, Heap] = mutable.HashMap.empty
+    countImportant until allEle.size foreach { l =>
+      unimportantReductions += ((l, new Heap(l)))
+    }
 
     def mergeSets(s1: Int, s2: Int) = {
-      val m1 = unimportantReductions.getOrElseUpdate(s1, new Heap(s1))
-      val m2 = unimportantReductions.getOrElseUpdate(s2, new Heap(s2))
+      val m1 = unimportantReductions(s1)
+      val m2 = unimportantReductions(s2)
       m1.merge(m2)
     }
 
@@ -242,11 +279,36 @@ class Debugger extends JavaScriptInterface {
     val nodes = allEle.flatMap { case (p, n) =>
       val label =
         if (n < countImportant)
-          Some(p.name)
+          eleNames.get(p)
         else
           countCircles.get(n).map(v => s"<internal: $v nodes>")
 
-      label.map { l => GraphNodes(s"D${n}", l) }
+      val graphType =
+        countCircles.get(n) match {
+          case Some(x) =>
+            Debugger.NodeAggregate(x)
+          case None =>
+            p match {
+              case _: MappedSignal[_, _] =>
+                Debugger.MappedSignal
+              case _: Variable[_] =>
+                Debugger.Var
+              case _: ReassignableVariable[_] =>
+                Debugger.ReassignableVar
+              case _: Signal[_] =>
+                Debugger.OtherSignal
+              case _: EventSource[_] =>
+                Debugger.EventSource
+              case _: Event[_] =>
+                Debugger.OtherEvent
+              case _: Observable =>
+                Debugger.Observable
+              case _ =>
+                Debugger.Other
+            }
+        }
+
+      label.map { l => GraphNodes(s"D${n}", l, p.name, graphType) }
     }.toSeq
 
     val edges = allEle.flatMap { case (p, n) =>

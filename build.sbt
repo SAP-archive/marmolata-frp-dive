@@ -14,7 +14,7 @@ lazy val fixScalastyle = Seq(
 )
 
 lazy val commonSettings = Seq(
-  version := "0.1.51",
+  version := "0.1.61",
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8"
@@ -79,7 +79,7 @@ lazy val usageSelfrx = (crossProject in file("usage/selfrx")).
   settings(
     name := "reactive-usage-selfrx"
   ).
-  dependsOn(selfrx)
+  dependsOn(selfrx, root % "compile->compile;test->test")
 
 lazy val usageSelfrxJVM = usageSelfrx.jvm
 lazy val usageSelfrxJS = usageSelfrx.js
@@ -89,7 +89,7 @@ lazy val debugSelfrx = (crossProject in file("usage/debug-selfrx")).
   settings(
     name := "reactive-usage-selfrx-debug"
   ).
-  dependsOn(selfrx)
+  dependsOn(selfrx, root % "compile->compile;test->test")
 
 lazy val debugSelfrxJVM = debugSelfrx.jvm
 lazy val debugSelfrxJS = debugSelfrx.js

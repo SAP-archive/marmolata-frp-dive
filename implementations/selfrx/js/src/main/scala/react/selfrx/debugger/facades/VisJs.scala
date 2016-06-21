@@ -5,7 +5,7 @@ import scala.scalajs.js.annotation.{ScalaJSDefined, JSExportAll, JSName, JSExpor
 import js.JSConverters._
 
 @ScalaJSDefined
-class GraphNode(val id: String, val label: String) extends js.Object
+class GraphNode(val id: String, val label: String, val title: js.UndefOr[String] = js.undefined, val color: String) extends js.Object
 
 @ScalaJSDefined
 class GraphEdge(val from: String, val to: String) extends js.Object
@@ -26,4 +26,5 @@ object NetworkData {
 @js.native
 @JSName("vis.Network")
 class Network(container: org.scalajs.dom.Node, data: NetworkData, options: js.Object = new js.Object()) extends js.Object {
+  def destroy(): Unit = js.native
 }
