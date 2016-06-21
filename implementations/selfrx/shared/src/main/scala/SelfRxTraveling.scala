@@ -148,7 +148,8 @@ object Debugger {
       case _: Signal => "#FF0000"
       case _: Event => "#00FF00"
       case Observable => "#0000FF"
-      case Other => "#000000"
+      case Other => "#00FFFF"
+      case _: NodeAggregate => "#000000"
     }
   }
 
