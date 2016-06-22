@@ -27,4 +27,5 @@ object NetworkData {
 @JSName("vis.Network")
 class Network(container: org.scalajs.dom.Node, data: NetworkData, options: js.Object = new js.Object()) extends js.Object {
   def destroy(): Unit = js.native
+  def on(eventName: String, callback: Function[js.Any, Unit]): Unit = js.native
 }

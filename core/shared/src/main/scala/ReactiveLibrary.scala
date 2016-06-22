@@ -39,6 +39,8 @@ object ReactiveLibrary {
     }
     def name: String = ""
     def name_=(s: String): Unit = {}
+
+
   }
 
   trait Observable[+A] {

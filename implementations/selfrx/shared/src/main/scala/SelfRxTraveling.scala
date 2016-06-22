@@ -6,7 +6,8 @@ import java.time.LocalTime
 
 import react.ReactiveLibrary.Nameable
 import react.debug.{HasUnderlying, DebugLayer}
-import react.selfrx.debugger.Debugger.{OtherSignal, MappedSignal, GraphEdges, GraphNodes}
+import react.selfrx.debugger.Debugger.MappedSignal
+import react.selfrx.debugger.Debugger._
 import reactive.selfrx._
 
 import scala.collection.immutable.HashMap
@@ -153,55 +154,50 @@ object Debugger {
     }
   }
 
-
   case class NodeAggregate(nrNodes: Int) extends GraphNodeType
 
-  case class GraphNodes(id: String, label: String, detailed: String, typeOfNode: GraphNodeType)
+  case class GraphNode(id: String, node: NodeDescription) {
+    def graphType =
+      node match {
+        case MultipleNodes(c) =>
+          Debugger.NodeAggregate(c)
+        case SingleNode(p) =>
+          p match {
+            case _: MappedSignal[_, _] =>
+              Debugger.MappedSignal
+            case _: Variable[_] =>
+              Debugger.Var
+            case _: ReassignableVariable[_] =>
+              Debugger.ReassignableVar
+            case _: reactive.selfrx.Signal[_] =>
+              Debugger.OtherSignal
+            case _: EventSource[_] =>
+              Debugger.EventSource
+            case _: reactive.selfrx.Event[_] =>
+              Debugger.OtherEvent
+            case _: Observable =>
+              Debugger.Observable
+            case _ =>
+              Debugger.Other
+          }
+      }
+
+  }
+
+  sealed trait NodeDescription
+  case class SingleNode(p: Primitive) extends NodeDescription
+  case class MultipleNodes(count: Int) extends NodeDescription
 
   case class GraphEdges(from: String, to: String)
 
-  case class GraphRepresentation(nodes: Seq[GraphNodes], edges: Seq[GraphEdges])
-}
+  case class GraphRepresentation(nodes: Seq[GraphNode], edges: Seq[GraphEdges])
 
-class Debugger extends JavaScriptInterface {
-  private var elements: mutable.MutableList[Primitive] = mutable.MutableList.empty
-
-  def createPrimitive(p: Primitive): Unit = {
-    elements += p
-  }
-
-  def drawFile(filename: String): Unit = {
-    import java.io._
-    val pw = new PrintWriter(new File(filename))
-    drawCurrent(pw.print)
-    pw.close()
-  }
-
-  def logInConsle(): Unit = {
-    var s : String = ""
-    drawCurrent { w => s += w }
-    print(s)
-  }
-
-  def drawCurrent(into: String => Unit): Unit = {
-    val g = currentGraph(Some.apply)
-
-    into(s"digraph selfrximage {\n")
-    g.nodes.foreach { x => into(s"${x.id} [label=" + "\"" + x.label + "\"]\n") }
-    g.edges.foreach { x => into(s"${x.from} -> ${x.to}\n") }
-    into(s"}\n")
-  }
-
-  def currentGraph(filterNodes: String => Option[String]): Debugger.GraphRepresentation = {
+  def calculateGraph(eles: Seq[Primitive]): Debugger.GraphRepresentation = {
     val allEle: mutable.HashMap[Primitive, Int] = mutable.HashMap.empty
-    val eleNames: mutable.HashMap[Primitive, String] = mutable.HashMap.empty
     var toInsert: List[Primitive] = List.empty
-    elements foreach { x =>
-      filterNodes(x.name).map { s =>
-        allEle += ((x, allEle.size))
-        eleNames += ((x, s))
-        toInsert = x +: toInsert
-      }
+    eles foreach { x =>
+      allEle += ((x, allEle.size))
+      toInsert = x +: toInsert
     }
 
     val countImportant = allEle.size
@@ -280,36 +276,11 @@ class Debugger extends JavaScriptInterface {
     val nodes = allEle.flatMap { case (p, n) =>
       val label =
         if (n < countImportant)
-          eleNames.get(p)
+          Some(SingleNode(p))
         else
-          countCircles.get(n).map(v => s"<internal: $v nodes>")
+          countCircles.get(n).map(MultipleNodes.apply)
 
-      val graphType =
-        countCircles.get(n) match {
-          case Some(x) =>
-            Debugger.NodeAggregate(x)
-          case None =>
-            p match {
-              case _: MappedSignal[_, _] =>
-                Debugger.MappedSignal
-              case _: Variable[_] =>
-                Debugger.Var
-              case _: ReassignableVariable[_] =>
-                Debugger.ReassignableVar
-              case _: Signal[_] =>
-                Debugger.OtherSignal
-              case _: EventSource[_] =>
-                Debugger.EventSource
-              case _: Event[_] =>
-                Debugger.OtherEvent
-              case _: Observable =>
-                Debugger.Observable
-              case _ =>
-                Debugger.Other
-            }
-        }
-
-      label.map { l => GraphNodes(s"D${n}", l, p.name, graphType) }
+      label.map { l => GraphNode(s"D${n}", l) }
     }.toSeq
 
     val edges = allEle.flatMap { case (p, n) =>
@@ -322,5 +293,41 @@ class Debugger extends JavaScriptInterface {
     }.toSeq
 
     Debugger.GraphRepresentation(nodes, edges)
+  }
+}
+
+class Debugger extends JavaScriptInterface {
+  private var elements: mutable.MutableList[Primitive] = mutable.MutableList.empty
+
+  def createPrimitive(p: Primitive): Unit = {
+    elements += p
+  }
+
+  def allElelements: Seq[Primitive] = elements
+
+  def drawFile(filename: String): Unit = {
+    import java.io._
+    val pw = new PrintWriter(new File(filename))
+    drawCurrent(pw.print)
+    pw.close()
+  }
+
+  def logInConsle(): Unit = {
+    var s : String = ""
+    drawCurrent { w => s += w }
+    print(s)
+  }
+
+  def drawCurrent(into: String => Unit): Unit = {
+    val g = currentGraph(_ => true)
+
+    into(s"digraph selfrximage {\n")
+    g.nodes.foreach { x => into(s"${x.id} [label=" + "\"" + x.graphType.toString + "\"]\n") }
+    g.edges.foreach { x => into(s"${x.from} -> ${x.to}\n") }
+    into(s"}\n")
+  }
+
+  def currentGraph(filterNodes: Primitive => Boolean): Debugger.GraphRepresentation = {
+    calculateGraph(elements.filter(filterNodes))
   }
 }

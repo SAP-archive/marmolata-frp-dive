@@ -7,17 +7,5 @@ import org.scalajs.jquery._
 @JSExport("ReactiveMachinary")
 @JSExportAll
 object Main {
-  def main(): Unit = {
-    val v = Var(0)
-
-    jQuery { () =>
-      jQuery().mainDiv.html(
-        s"""
-           | <table id="last-steps">
-           |
-           | </table>
-         """.stripMargin)
-    }
-  }
 
 }

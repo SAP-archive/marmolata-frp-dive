@@ -1,6 +1,7 @@
 import react.ReactiveLibrary.Nameable
+import react.debug.HasUnderlying
 import react.{ReactiveLibrary, ReactiveLibraryUsage}
-import react.logged.{HasUnderlying, AnnotateStack, DebugLayer}
+import react.logged.AnnotateStack
 import react.selfrx.debugger.{Debugger, RecordedSelfRxImpl}
 import reactive.selfrx.Primitive
 

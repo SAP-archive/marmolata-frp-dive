@@ -6,4 +6,5 @@ import react.{ReactiveLibraryUsage, ReactiveLibrary}
 
 class DebugSelfrxTest extends FlatSpec with TestImplementation {
   override def reactLibrary_ : ReactiveLibrary with ReactiveLibraryUsage = reactive.library
+  override def shouldRunPropertyTests: Boolean = true
 }
