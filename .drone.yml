@@ -1,0 +1,4 @@
+build:
+  image: ubuntu
+  commands:
+    - sh build-jenkins
