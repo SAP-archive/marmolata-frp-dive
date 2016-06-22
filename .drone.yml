@@ -1,6 +1,6 @@
+clone:
+  skip_verify: true
 build:
   image: ubuntu
-  clone:
-    skip_verify: true
   commands:
     - sh build-jenkins
