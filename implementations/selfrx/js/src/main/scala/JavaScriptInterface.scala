@@ -2,8 +2,6 @@ package react.selfrx.debugger
 
 import org.scalajs.dom
 import react.selfrx.debugger.Debugger.{GraphNode, SingleNode, NodeDescription}
-import react.selfrx.debugger.facades.vis.GraphNode
-import react.selfrx.debugger.facades.vis.{GraphEdge, GraphNode, NetworkData}
 import reactive.selfrx.Primitive
 
 import scala.collection.immutable.HashMap
@@ -20,12 +18,12 @@ object JavaScriptFunctions {
                 options: js.Object = js.Dynamic.literal().asInstanceOf[js.Object]): vis.Network = {
     val graph = Debugger.calculateGraph(primitives)
 
-    val data = NetworkData(
+    val data = vis.NetworkData(
       graph.nodes.map(x => {
         val props = nodeProperties(x.node)
-        new GraphNode(x.id, props.label, props.title.map(js.UndefOr.any2undefOrA).getOrElse(js.undefined), props.color)
+        new vis.GraphNode(x.id, props.label, props.title.map(js.UndefOr.any2undefOrA).getOrElse(js.undefined), props.color)
       }),
-      graph.edges.map(x => new GraphEdge(x.from, x.to))
+      graph.edges.map(x => new vis.GraphEdge(x.from, x.to))
     )
 
     val nodeHashMap: HashMap[String, Primitive] = HashMap(graph.nodes.collect { case GraphNode(id, SingleNode(p)) => (id, p) }: _*)
