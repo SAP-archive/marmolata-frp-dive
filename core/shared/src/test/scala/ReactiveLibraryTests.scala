@@ -847,7 +847,7 @@ trait ReactLibraryTests {
       case (name, property) =>
         it should name in {
           val test = Test.check(property) {
-            _.withMinSuccessfulTests(1000)
+            _.withMinSuccessfulTests(100)
           }
           info(org.scalacheck.util.Pretty.pretty(test))
           assert(test.passed)
@@ -859,7 +859,7 @@ trait ReactLibraryTests {
       case (name, property) =>
         it should name in {
           val test = Test.check(property) {
-            _.withMinSuccessfulTests(1000)
+            _.withMinSuccessfulTests(100)
           }
           info(org.scalacheck.util.Pretty.pretty(test))
           assert(test.passed)
