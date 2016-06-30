@@ -1,6 +1,77 @@
 clone:
   skip_verify: true
+
+notify:
+  slack:
+    webhook_url: https://hooks.slack.com/services/$$SLACK_TOKEN
+    channel: general
+    username: Drone-CI
+    when:
+      failure: true
+  email:
+    from: techologyoffice_ci@sap.com
+    host: mail.sap.corp
+    port: 25
+    skip_verify: true
+    when:
+      failure: true
+
+cache:
+  mount:
+    - .ivy2
+
 build:
-  image: ubuntu
-  commands:
-    - sh build-jenkins
+  make:
+    image: marmolata/scala-build
+    environment:
+      - IVY2=.ivy2
+    commands:
+      - sbt --warn -Dsbt.ivy.home=$IVY2 scalastyle compile doc
+  publish_documentation:
+    image: marmolata/scala-build
+    environment:
+      - IVY2=.ivy2
+    volumes:
+      - /var/www/:/var/www/
+    commands:
+      - export BASE=/var/www/documentation/${CI_REPO##*/}
+      - export JS=${BASE}/js JVM=${BASE}/jvm
+      - mkdir -p "${JS}/${CI_BUILD_NUMBER}" "${JVM}/${CI_BUILD_NUMBER}" "${BASE}/jvm-latest" "${BASE}/jvm-latest"
+      - cp -ar core/js/target/scala-2.11/api/ "${JS}/${CI_BUILD_NUMBER}"
+      - cp -ar core/jvm/target/scala-2.11/api/ "${JVM}/${CI_BUILD_NUMBER}"
+      - rsync -aqSD --ignore-errors --force --delete "${JVM}/`ls $JVM | sort -rn | head -n 1`/api/" "${BASE}/jvm-latest"
+      - rsync -aqSD --ignore-errors --force --delete "${JS}/`ls $JS | sort -rn | head -n 1`/api/" "${BASE}/js-latest"
+    # TODO: when to link latest?
+    # when:
+    #   event: tag
+    #   branch: master
+  publish_checkstyle:
+    image: marmolata/scala-build
+    environment:
+      - IVY2=.ivy2
+    volumes:
+      - /var/www/:/var/www/
+    commands:
+      - export BASE=/var/www/checkstyle/${CI_REPO##*/}
+      # TODO: aggregate into one report
+      - |
+        for CHECK in `find . -name scalastyle-result.xml`;
+        do
+          TARGET="${BASE}/${CI_BUILD_NUMBER}/`echo ${CHECK} | sed -e 's/^.\///' -e 's/\/target//' -e 's/.xml$//' -e 's/\//-/g'`"
+          mkdir -p `dirname "${TARGET}"`
+          xsltproc /root/contribution/xsl/checkstyle-noframes.xsl "${CHECK}" > "${TARGET}.html"
+        done
+      - rsync -aqSD --ignore-errors --force --delete "$BASE/`ls $BASE | sort -rn | head -n 1`/" "$BASE/latest"
+    # TODO: when to link latest?
+    # when:
+    #   event: tag
+    #   branch: master
+  publish_artifact:
+    image: marmolata/scala-build:latest
+    environment:
+      - IVY2=.ivy2
+    commands:
+      - sbt --warn 'set credentials += Credentials("Sonatype Nexus Repository Manager", "nexus.wdf.sap.corp", $$NEXUS_USER_MILESTONES, $$NEXUS_PASSWORD_MILESTONES' 'set version:=$$TAG' publish
+    when:
+      event: tag
+      branch: master

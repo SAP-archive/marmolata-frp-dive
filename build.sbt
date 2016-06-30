@@ -3,8 +3,13 @@ import sbt.Keys._
 lazy val nexusPublishingSettings = Seq(
   publishMavenStyle := true,
   publishArtifact in Test := false,
-  publishTo := Some("SAP Nexus" at "http://nexus.wdf.sap.corp:8081/nexus/content/repositories/deploy.milestones.marmolata/"),
-  credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
+  publishTo := {
+    val nexus = "http://nexus.wdf.sap.corp:8081/nexus/content/repositories/"
+    if (isSnapshot.value)
+      Some("snapshots" at nexus + "deploy.snapshots.marmolata/") 
+    else
+      Some("releases"  at nexus + "deploy.milestones.marmolata/")
+  },
   javacOptions in (Compile,doc) ++= Seq("-notimestamp", "-linksource")
 )
 
