@@ -4,7 +4,9 @@ Reactive Library For Scala and Scala.js
 [![Build Status](http://mo-4249591b5.mo.sap.corp/api/badges/Marmolata/Marmolata.React/status.svg)](http://mo-4249591b5.mo.sap.corp/Marmolata/Marmolata.React)
 ![License](https://img.shields.io/:license-unfree-red.svg)
 
-[API documentation](http://mo-a32c0f9d1.mo.sap.corp:8080/job/ReactiveLibrary-build_dev/javadoc/#react.package)
+[API documentation (scalajs)](http://mo-4249591b5.mo.sap.corp:8081/documentation/Marmolata.React/js-latest/#package)
+
+[API documentation (scala)](http://mo-4249591b5.mo.sap.corp:8081/documentation/Marmolata.React/jvm-latest/#package)
 
 This library provides reactive programming primitives. Currently, this gives the programmer an API with a clear semantics which is then wrapped to other reactive libraries. Currently, the scalarx backend is the best provided backend. An other possibility is the metarx backend. The monix backend is only a proof-of-concept and doesn't work at all.
 
