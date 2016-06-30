@@ -1,7 +1,7 @@
 Reactive Library For Scala and Scala.js
 ====
 
-[![Build Status](http://mo-a32c0f9d1.mo.sap.corp:8080/buildStatus/icon?job=ReactiveLibrary-build_dev)](http://mo-a32c0f9d1.mo.sap.corp:8080/job/ReactiveLibrary-build_dev/)
+[![Build Status](http://mo-4249591b5.mo.sap.corp/api/badges/Marmolata/Marmolata.React/status.svg)](http://mo-4249591b5.mo.sap.corp/Marmolata/Marmolata.React)
 ![License](https://img.shields.io/:license-unfree-red.svg)
 
 [API documentation](http://mo-a32c0f9d1.mo.sap.corp:8080/job/ReactiveLibrary-build_dev/javadoc/#react.package)
