@@ -165,6 +165,7 @@ trait Primitive extends Object with PrettyPrimitive {
   }
 
   final def getChildren(): HashSet[Primitive] = children
+  final def getParents(): HashSet[Primitive] = parents
 
   final def replaceParents(currentTrigger: Option[TriggerUpdate], p: Primitive*): Unit = {
     var shouldRecalculate = false

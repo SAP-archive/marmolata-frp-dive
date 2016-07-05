@@ -11,9 +11,9 @@ trait AnnotateStack extends DebugLayer with EnsureLargeEnoughStackTrace {
 
 
   //TODO use js WeakMap
-  var traces: mutable.HashMap[HasUnderlying[Nameable], Seq[StackTraceElement]] = mutable.HashMap.empty
+  var traces: mutable.HashMap[Nameable, Seq[StackTraceElement]] = mutable.HashMap.empty
 
-  def stackFrom(t: HasUnderlying[Nameable]): Seq[StackTraceElement] = {
+  def stackFrom(t: Nameable): Seq[StackTraceElement] = {
     traces.getOrElse(t, Seq.empty)
   }
 
@@ -23,7 +23,7 @@ trait AnnotateStack extends DebugLayer with EnsureLargeEnoughStackTrace {
     val stackframes = currentStackTrace.collect {
       case st if filterPackages.forall(!st.getClassName.startsWith(_)) && checkStackframe(st) => st
     }.toSeq
-    traces += ((u, stackframes))
+    traces += ((u.under, stackframes))
   }
 
   override def implementationName: String = s"annotate-stack-of-${super.implementationName}"
