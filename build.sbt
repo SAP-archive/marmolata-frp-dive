@@ -99,13 +99,3 @@ lazy val debugSelfrx = (crossProject in file("usage/debug-selfrx")).
 
 lazy val debugSelfrxJVM = debugSelfrx.jvm
 lazy val debugSelfrxJS = debugSelfrx.js
-
-//lazy val timeTravelingExample = (project in file("example")).
-//  enablePlugins(ScalaJSPlugin).
-//  settings(jsSettings).
-//  settings(
-//    name := "example",
-//    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.0",
-//    libraryDependencies += "be.doeraene" %%% "scalajs-jquery" % "0.9.0"
-//  ).
-//  dependsOn(selfrxJS)
