@@ -18,20 +18,39 @@ class GraphNode(
 extends js.Object
 
 object GraphNode {
+  val heightOfNode: Int = 50
+
+  @js.native
+  @JSName("URL")
+  object URL extends js.Any {
+    def createObjectURL(blob: Blob): js.Any = js.native
+  }
+
   def coloredNode(id: String, label: String, colors: List[String]) = {
+
+    def posOfNthColor(index: Int): Int = {
+      index * heightOfNode / colors.length
+    }
+
     val data =
       s"""
-        |<svg xmlns="http://www.w3.org/2000/svg" width="50" height="${colors.length * 50}">
+        |<svg xmlns="http://www.w3.org/2000/svg" width="50" height="${posOfNthColor(colors.length)}">
         |${colors.zipWithIndex.map { case (color, index) =>
               s"""
-                |<rect x="0" y="${index * 50 / colors.length}" width="100%" height="${(index + 1) * 50 / colors.length - index * 50 / colors.length}" fill="${color}" stroke-width="5" stroke="#ffffff" ></rect>
+                |<rect x="0"
+                |      y="${posOfNthColor(index)}"
+                |      width="100%" height="${posOfNthColor(index + 1) - posOfNthColor(index)}"
+                |      fill="${color}"
+                |      stroke-width="1"
+                |      stroke="#ffffff" >
+                |</rect>
               """.stripMargin
             }.mkString
           }
         |</svg>
       """.stripMargin
-    val image = dom.window.asInstanceOf[js.Dynamic].URL.createObjectURL(
-      new Blob(js.Array(data), BlobPropertyBag("image/svg+xml;charset=utf-8")))
+
+    val image = URL.createObjectURL(new Blob(js.Array(data), BlobPropertyBag("image/svg+xml;charset=utf-8")))
 
     new GraphNode(id = id,
       label = label,
@@ -41,8 +60,6 @@ object GraphNode {
     )
   }
 }
-
-
 
 @ScalaJSDefined
 class GraphEdge(val from: String, val to: String) extends js.Object
@@ -65,4 +82,5 @@ object NetworkData {
 class Network(container: org.scalajs.dom.Node, data: NetworkData, options: js.Object = new js.Object()) extends js.Object {
   def destroy(): Unit = js.native
   def on(eventName: String, callback: js.Function1[js.Any, Unit]): Unit = js.native
+  def setData(data: NetworkData): Unit = js.native
 }

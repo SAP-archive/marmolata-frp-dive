@@ -19,7 +19,7 @@ lazy val fixScalastyle = Seq(
 )
 
 lazy val commonSettings = Seq(
-  version := "0.1.73",
+  version := "0.1.90",
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8",
@@ -74,7 +74,8 @@ lazy val selfrx = (crossProject in file("implementations/selfrx")).
   settings(
     name := "reactive-impl-self"
   ).jsSettings(
-    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.0"
+    libraryDependencies += "org.scala-js" %%% "scalajs-dom" % "0.9.0",
+    libraryDependencies += "be.doeraene" %%% "scalajs-jquery" % "0.9.0"
   ).dependsOn(root % "compile->compile;test->test")
 
 lazy val selfrxJS = selfrx.js

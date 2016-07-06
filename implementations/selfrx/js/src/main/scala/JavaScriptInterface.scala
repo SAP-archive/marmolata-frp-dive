@@ -1,8 +1,10 @@
 package react.selfrx.debugger
 
 import org.scalajs.dom
-import react.selfrx.debugger.Debugger.{PrimitiveGroup, GraphNode, SingleNode, NodeDescription}
-import reactive.selfrx.Primitive
+import react.selfrx.debugger.Debugger.{PrimitiveGroup, GraphNode, NodeDescription}
+import react.selfrx.debugger.facades.vis.DataSet
+import scala.scalajs.js
+import js.JSConverters._
 
 import scala.collection.immutable.HashMap
 import scala.scalajs.js
@@ -11,18 +13,7 @@ import react.selfrx.debugger.facades.vis
 
 
 object JavaScriptFunctions {
-  class Network(val networkFacade: vis.Network, keyMap: HashMap[String, Primitive]) {
-    def onNodeSelect(nodeCallback: Primitive => Unit): Unit = {
-      networkFacade.on("selectNode", (obj: js.Any) => {
-        keyMap.get(obj.asInstanceOf[js.Dynamic].nodes.asInstanceOf[js.Array[String]](0)).map {
-          x => nodeCallback(x)
-        }
-        Unit: Unit
-      })
-    }
-  }
-
-  class NodeProperties(val grahNode: String => vis.GraphNode)
+  class NodeProperties(val graphNode: String => vis.GraphNode)
 
   object NodeProperties {
     def apply(label: String, color: String, title: Option[String]): NodeProperties = {
@@ -36,27 +27,40 @@ object JavaScriptFunctions {
     }
   }
 
+  class DrawGraph(container: dom.Node, options: js.Object = js.Dynamic.literal().asInstanceOf[js.Object]) {
+    var network: Option[vis.Network] = None
+    var onNodeSelected: js.Any => Unit = (_: js.Any) => {}
 
-  def drawGraph(container: dom.Node, primitives: Seq[PrimitiveGroup],
-                nodeProperties: NodeDescription => NodeProperties,
-                options: js.Object = js.Dynamic.literal().asInstanceOf[js.Object]): Network = {
-    val graph = Debugger.calculateGraph(primitives)
+    def redraw(primitives: Seq[PrimitiveGroup], nodeProperties: NodeDescription => NodeProperties, onSelected: NodeDescription => Unit): Unit = {
+      val graph = Debugger.calculateGraph(primitives)
 
-    val data = vis.NetworkData(
-      graph.nodes.map(x => {
-        val props = nodeProperties(x.node)
-        props.grahNode(x.id)
-      }),
-      graph.edges.map(x => new vis.GraphEdge(x.from, x.to))
-    )
+      val nodes = graph.nodes.map { x =>
+        nodeProperties(x.node).graphNode(x.id)
+      }
 
-    val nodeHashMap: HashMap[String, Primitive] = HashMap(graph.nodes.collect { case GraphNode(id, SingleNode(p)) => (id, p) }: _*)
+      val edges = graph.edges.map { x => new vis.GraphEdge(x.from, x.to) }
 
-    val result = new vis.Network(container, data, options)
-    new Network(result, nodeHashMap)
+      val nodeHashMap: HashMap[String, NodeDescription] = HashMap(graph.nodes.collect { case GraphNode(id, p) => (id, p) }: _*)
+
+      val result = network match {
+        case None =>
+          val result = new vis.Network(container, vis.NetworkData(nodes, edges), options)
+          result.on("selectNode", (x: js.Any) => onNodeSelected(x))
+          network = Some(result)
+          result
+        case Some(result) =>
+          result.setData(vis.NetworkData(nodes, edges))
+          result
+      }
+
+      onNodeSelected = (obj: js.Any) => {
+        nodeHashMap.get(obj.asInstanceOf[js.Dynamic].nodes.asInstanceOf[js.Array[String]](0)).map {
+          x => onSelected(x)
+        }
+      }
+    }
   }
 }
-
 
 trait JavaScriptInterface {
   self: Debugger =>

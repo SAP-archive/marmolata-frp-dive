@@ -159,28 +159,9 @@ object Debugger {
   case class GraphNode(id: String, node: NodeDescription) {
     def graphType =
       node match {
-        case MultipleNodes(c) =>
+        case MultipleNodes(c, _) =>
           Debugger.NodeAggregate(c)
         case MultipleImportantNodes(PrimitiveGroup(_, Seq(p, _*))) =>
-          p match {
-            case _: MappedSignal[_, _] =>
-              Debugger.MappedSignal
-            case _: Variable[_] =>
-              Debugger.Var
-            case _: ReassignableVariable[_] =>
-              Debugger.ReassignableVar
-            case _: reactive.selfrx.Signal[_] =>
-              Debugger.OtherSignal
-            case _: EventSource[_] =>
-              Debugger.EventSource
-            case _: reactive.selfrx.Event[_] =>
-              Debugger.OtherEvent
-            case _: Observable =>
-              Debugger.Observable
-            case _ =>
-              Debugger.Other
-          }
-        case SingleNode(p) =>
           p match {
             case _: MappedSignal[_, _] =>
               Debugger.MappedSignal
@@ -204,9 +185,8 @@ object Debugger {
   }
 
   sealed trait NodeDescription
-  case class SingleNode(p: Primitive) extends NodeDescription
   case class MultipleImportantNodes(g: PrimitiveGroup) extends NodeDescription
-  case class MultipleNodes(count: Int) extends NodeDescription
+  case class MultipleNodes(count: Int, p: Seq[Primitive]) extends NodeDescription
 
   case class GraphEdges(from: String, to: String)
 
@@ -215,8 +195,9 @@ object Debugger {
   case class PrimitiveGroup(description: Any, primitives: Seq[Primitive])
 
   //TODO: there has to be something better in the/some standard library
-  final class Heap(private val value: Int) {
+  final class Heap(private val value: Int, private val prim: Primitive) {
     private var parent: Option[Heap] = None
+    private var children: Seq[Heap] = Seq.empty
 
     def getParent: Heap = {
       parent match {
@@ -239,14 +220,26 @@ object Debugger {
       if (this != other) {
         if (value < other.value) {
           other.parent = Some(this)
+          children = children :+ other
         }
         else {
           parent = Some(other)
+          other.children = other.children :+ this
         }
       }
     }
 
     def minValue: Int = getParent.value
+
+    private def childrenRecursively: Seq[(Int, Primitive)] = {
+      (value, prim) +: children.flatMap(_.childrenRecursively)
+    }
+
+    def allChildren: Seq[(Int, Primitive)] = {
+      getParent.childrenRecursively
+    }
+
+    def isMinimum: Boolean = parent.isEmpty
   }
 
   def calculateGraph(eles: Seq[PrimitiveGroup]): Debugger.GraphRepresentation = {
@@ -256,7 +249,7 @@ object Debugger {
     eles foreach { x =>
       var indexes: Seq[Int] = Seq.empty
       x.primitives foreach { y =>
-        val index = allEle.get(y).getOrElse(allEle.size)
+        val index = allEle.getOrElse(y, allEle.size)
         allEle += ((y, allEle.size))
         toInsert = y +: toInsert
         indexes = index +: indexes
@@ -278,9 +271,18 @@ object Debugger {
       }
     }
 
+    val importantCircles: Map[Int, Int] =
+      primGroups.flatMap {
+        case (primGroup, indexes) =>
+          val head = indexes.head
+          indexes.map((_, head))
+      }.toMap
+
     val unimportantReductions: mutable.HashMap[Int, Heap] = mutable.HashMap.empty
-    countImportant until allEle.size foreach { l =>
-      unimportantReductions += ((l, new Heap(l)))
+    allEle foreach { case (p, i) =>
+      if (i >= countImportant) {
+        unimportantReductions += ((i, new Heap(i, p)))
+      }
     }
 
     def mergeSets(s1: Int, s2: Int) = {
@@ -290,45 +292,73 @@ object Debugger {
     }
 
     allEle.foreach {
-      case (p, n) if (n >= countImportant) => {
-        val l = p.getChildren().map(allEle(_)).filter(_ >= countImportant)
-        l.foreach(mergeSets(_, n))
+      case (p, n) =>
+        if (n >= countImportant) {
+          val l = p.getChildren().map(allEle(_)).filter(_ >= countImportant)
+          l.foreach(mergeSets(_, n))
       }
-      case _ => {}
     }
 
-    val countCircles: mutable.HashMap[Int, Int] = mutable.HashMap.empty
-    unimportantReductions foreach { case (v, h) =>
-      countCircles += ((h.minValue, countCircles.getOrElse(h.minValue, 0) + 1))
-    }
+    // go through all heaps and merge the ones with identical (important) input and output
+    case class InputAndOutput(input: Set[Int], output: Set[Int])
+    val allHeaps: mutable.Map[InputAndOutput, Heap] = mutable.Map.empty
 
-    val importantCircles: Map[Int, Option[Int]] =
-      primGroups.flatMap {
-        case (primGroup, indexes) =>
-          val head = indexes.head
-          indexes.map(x => (x, if (x == head) None else Some(head)))
-      }.toMap
-
-    val nodes = allEle.flatMap { case (p, n) =>
-      val label =
-        if (n < countImportant)
-          importantCircles(n).map { j =>
-            MultipleImportantNodes(primGroups.find(x => x._2.head == j).get._1)
+    allEle.foreach {
+      case (p, n) =>
+        if (n >= countImportant) {
+          val heap = unimportantReductions(n)
+          val all = heap.allChildren.map(_._2)
+          val parents =
+            all.flatMap(_.getParents()).map(allEle(_))
+              .filter(_ < countImportant)
+              .map(y => importantCircles(y)).toSet
+          val children =
+            all.flatMap(_.getChildren()).map(allEle(_))
+              .filter(_ < countImportant)
+              .map(y => importantCircles(y)).toSet
+          val iao = InputAndOutput(parents, children)
+          allHeaps.get(iao) match {
+            case None =>
+              allHeaps.update(iao, unimportantReductions(n))
+            case Some(heap2) =>
+              heap merge heap2
           }
-        else
-          countCircles.get(n).map(MultipleNodes.apply)
+        }
+    }
+
+    val nodes = allEle.toSeq.flatMap { case (p, n) =>
+      val label =
+        if (n < countImportant) {
+          if (importantCircles(n) == n) {
+            Some(MultipleImportantNodes(primGroups.find(x => x._2.head == n).get._1))
+          }
+          else {
+            None
+          }
+        }
+        else {
+          val h = unimportantReductions(n)
+          if (h.isMinimum) {
+            val children = h.allChildren.map(_._2)
+            Some(MultipleNodes(children.size, children))
+          }
+          else {
+            None
+          }
+        }
 
       label.map { l => GraphNode(s"D${n}", l) }
-    }.toSeq
+    }
 
     val edges = allEle.flatMap { case (p, n) =>
-      val nn = unimportantReductions.get(n).map(_.minValue).getOrElse(n)
+      val nn = unimportantReductions.get(n).map(_.minValue).getOrElse(importantCircles(n))
       p.getChildren().map { c =>
         val nc = allEle(c)
-        val ncn = unimportantReductions.get(nc).map(_.minValue).getOrElse(nc)
+        val ncn = unimportantReductions.get(nc).map(_.minValue).getOrElse(importantCircles(nc))
+        (nn, ncn)
         GraphEdges(s"D${nn}", s"D${ncn}")
       }
-    }.toSeq
+    }.toSet.toSeq
 
     Debugger.GraphRepresentation(nodes, edges)
   }
