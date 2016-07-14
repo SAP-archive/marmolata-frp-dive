@@ -44,20 +44,19 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
   def newCancelable(s: Cancelable): Cancelable =
     withOnNew(new WrappedCancelable(s))
 
-  def onNew(u: HasUnderlying[Nameable]): Unit = {}
-  private def withOnNew(u: HasUnderlying[Nameable]): u.type = {
+  def onNew(u: HasUnderlying[Annotateable]): Unit = {}
+  private def withOnNew(u: HasUnderlying[Annotateable]): u.type = {
     onNew(u)
     u
   }
 
   class WrappedCancelable(val u: Cancelable) extends Cancelable with HasUnderlying[Cancelable] {
-    override def kill(): Unit = u.kill
+    override def kill(): Unit = u.kill()
 
     override def under: Cancelable = u
 
-    override def name: String = u.name
-
-    override def name_=(s: String): Unit = u.name = s
+    override def addAnnotation(annotation: Annotation): Unit = u.addAnnotation(annotation)
+    override def allAnnotations: Seq[Annotation] = u.allAnnotations
   }
 
   class Signal[+A](private[DebugLayer] val u: underlying.Signal[A]) extends SignalTrait[A] with HasUnderlying[SignalTrait[A]] {
@@ -66,6 +65,9 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
     override def observe(f: (A) => Unit): Cancelable = newSignalObservable(this, f)
 
     override def under: SignalTrait[A] = u
+
+    override def addAnnotation(annotation: Annotation): Unit = u.addAnnotation(annotation)
+    override def allAnnotations: Seq[Annotation] = u.allAnnotations
   }
 
   class Var[A](u: underlying.Var[A]) extends Signal[A](u) with VarTrait[A] {
@@ -76,6 +78,9 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
     override def observe(f: (A) => Unit): Cancelable = newEventObservable(this, f)
 
     override def under: EventTrait[A] = u
+
+    override def addAnnotation(annotation: Annotation): Unit = u.addAnnotation(annotation)
+    override def allAnnotations: Seq[Annotation] = u.allAnnotations
   }
 
   class EventSource[A](u: underlying.EventSource[A]) extends Event[A](u) with EventSourceTrait[A] {
@@ -95,6 +100,9 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
     override lazy val toSignal: Signal[A] = new Signal(u.toSignal)
 
     override def under: VarTrait[A] = u
+
+    override def addAnnotation(annotation: Annotation): Unit = u.addAnnotation(annotation)
+    override def allAnnotations: Seq[Annotation] = u.allAnnotations
   }
 
   override protected[react] def toSignal[A](init: A, event: Event[A]): Signal[A] = {

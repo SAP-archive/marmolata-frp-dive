@@ -1,6 +1,6 @@
 package react.debug
 
-import react.ReactiveLibrary.Nameable
+import react.ReactiveLibrary.Annotateable
 
 import scala.collection.mutable
 
@@ -11,13 +11,13 @@ trait AnnotateStack extends DebugLayer with EnsureLargeEnoughStackTrace {
 
 
   //TODO use js WeakMap
-  var traces: mutable.HashMap[Nameable, Seq[StackTraceElement]] = mutable.HashMap.empty
+  var traces: mutable.HashMap[Annotateable, Seq[StackTraceElement]] = mutable.HashMap.empty
 
-  def stackFrom(t: Nameable): Seq[StackTraceElement] = {
+  def stackFrom(t: Annotateable): Seq[StackTraceElement] = {
     traces.getOrElse(t, Seq.empty)
   }
 
-  override def onNew(u: HasUnderlying[Nameable]): Unit = {
+  override def onNew(u: HasUnderlying[Annotateable]): Unit = {
     super.onNew(u)
     val currentStackTrace = new RuntimeException().getStackTrace
     val stackframes = currentStackTrace.collect {

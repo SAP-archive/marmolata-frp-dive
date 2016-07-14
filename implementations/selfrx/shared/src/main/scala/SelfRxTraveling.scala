@@ -4,7 +4,7 @@ package debugger
 
 import java.time.LocalTime
 
-import react.ReactiveLibrary.Nameable
+import react.ReactiveLibrary.Annotateable
 import react.debug.{HasUnderlying, DebugLayer}
 import react.selfrx.debugger.Debugger.MappedSignal
 import react.selfrx.debugger.Debugger._
@@ -116,7 +116,7 @@ class RecordedSelfRxImpl extends SelfRxImpl {
 trait DebuggerSelfRxImpl extends DebugLayer with DebugSelfRxImplJavaScriptInterface {
   val debugger: Debugger = new Debugger()
 
-  override def onNew(u: HasUnderlying[Nameable]): Unit = {
+  override def onNew(u: HasUnderlying[Annotateable]): Unit = {
     super.onNew(u)
     u.under match {
       case p: Primitive =>
@@ -181,12 +181,12 @@ object Debugger {
               Debugger.Other
           }
       }
-
   }
 
   sealed trait NodeDescription
   case class MultipleImportantNodes(g: PrimitiveGroup) extends NodeDescription
   case class MultipleNodes(count: Int, p: Seq[Primitive]) extends NodeDescription
+  case class SingleNode()
 
   case class GraphEdges(from: String, to: String)
 

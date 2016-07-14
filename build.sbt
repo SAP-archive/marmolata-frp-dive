@@ -19,7 +19,7 @@ lazy val fixScalastyle = Seq(
 )
 
 lazy val commonSettings = Seq(
-  version := "0.1.90",
+  version := "0.1.91",
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8",
@@ -81,6 +81,15 @@ lazy val selfrx = (crossProject in file("implementations/selfrx")).
 lazy val selfrxJS = selfrx.js
 lazy val selfrxJVM = selfrx.jvm
 
+lazy val usageInterface = (crossProject in file("usage/interface")).
+  jsSettings(jsSettings: _*).jvmSettings(jvmSettings: _*).
+  settings(
+    name := "reactive-usage-implementation"
+  )
+
+lazy val usageInterfaceJS = usageInterface.js
+lazy val usageInterfaceJVM = usageInterface.jvm
+
 lazy val usageSelfrx = (crossProject in file("usage/selfrx")).
   jsSettings(jsSettings: _*).jvmSettings(jvmSettings: _*).
   settings(
@@ -100,3 +109,16 @@ lazy val debugSelfrx = (crossProject in file("usage/debug-selfrx")).
 
 lazy val debugSelfrxJVM = debugSelfrx.jvm
 lazy val debugSelfrxJS = debugSelfrx.js
+
+lazy val example =
+  (project in file("example")).
+    enablePlugins(ScalaJSPlugin).
+    settings(commonSettings: _*).settings(name := "reactive-example").
+    dependsOn(debugSelfrxJS).
+  settings(
+    jsDependencies += "org.webjars.bower" % "jquery" % "1.11.1" / "dist/jquery.js",
+    jsDependencies += "org.webjars.npm" % "source-map" % "0.5.6" / "dist/source-map.js",
+    jsDependencies += "org.webjars.bower" % "bootstrap" % "3.3.6" / "dist/js/bootstrap.js" dependsOn "dist/jquery.js",
+    jsDependencies += "org.webjars.npm" % "vis" % "4.16.1" / "dist/vis.js",
+    jsDependencies += ("org.webjars.bower" % "bootstrap-treeview" % "1.2.0" exclude("org.webjars.bower", "bootstrap") exclude ("org.webjars.bower", "jquery")) / "dist/bootstrap-treeview.min.js" dependsOn "dist/js/bootstrap.js"
+  )

@@ -32,15 +32,24 @@ object ReactiveLibrary {
     def Never: Event[Nothing]
   }
 
-  trait Nameable {
-    final def withName(s: String): this.type = {
-      name = s
+  trait Annotateable {
+    final def tag(annotation: Annotation): this.type = {
+      addAnnotation(annotation)
       this
     }
-    def name: String = ""
-    def name_=(s: String): Unit = {}
 
+    private var annotations: Seq[Annotation] = Seq.empty
 
+    def addAnnotation(annotation: Annotation): Unit = annotations = annotation +: annotations
+    def allAnnotations: Seq[Annotation] = annotations
+
+    final def prettyPrintAnnotations: String = {
+      allAnnotations.map(_.description).mkString(",")
+    }
+
+    final def containsTag(tag: Annotation): Boolean = {
+      allAnnotations.exists { _.containsTag(tag) }
+    }
   }
 
   trait Observable[+A] {
@@ -69,7 +78,7 @@ object ReactiveLibrary {
     def observe(f: A => Unit): Cancelable
   }
 
-  trait SignalTrait[+A] extends Observable[A] with Nameable {
+  trait SignalTrait[+A] extends Observable[A] with Annotateable {
     /**
       * returns the current value of this Signal.
       * It's generally better to use composition methods like Functor#map, Cartesian#product
@@ -83,7 +92,7 @@ object ReactiveLibrary {
     final def get: A = now
   }
 
-  trait EventTrait[+A] extends Observable[A] with Nameable
+  trait EventTrait[+A] extends Observable[A] with Annotateable
 
   trait EventOperationsTrait[F[+_]] extends Functor[F] with Filterable[F] with Mergeable[F]
   trait SignalOperationsTrait[F[+_]] extends Applicative[F]
@@ -122,9 +131,23 @@ object ReactiveLibrary {
     final def := (value: A): Unit = emit(value)
   }
 
-  trait Cancelable extends Nameable {
+  trait Cancelable extends Annotateable {
     /** stop calling the associated function of the observe method that returned this object */
     def kill(): Unit
+  }
+
+  trait Annotation {
+    def parent: Option[Annotation] = None
+    def description: String
+
+    final def containsTag(tag: Annotation): Boolean = {
+      this == tag || parent.exists(_.containsTag(tag))
+    }
+  }
+
+  object InternalAnnotation extends Annotation {
+    override def parent: Option[Annotation] = None
+    override def description: String = "internal"
   }
 }
 

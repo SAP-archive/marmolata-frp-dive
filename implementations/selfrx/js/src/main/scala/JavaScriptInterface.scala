@@ -3,6 +3,7 @@ package react.selfrx.debugger
 import org.scalajs.dom
 import react.selfrx.debugger.Debugger.{PrimitiveGroup, GraphNode, NodeDescription}
 import react.selfrx.debugger.facades.vis.DataSet
+import react.selfrx.debugger.visualization.GraphNodeKey
 import scala.scalajs.js
 import js.JSConverters._
 

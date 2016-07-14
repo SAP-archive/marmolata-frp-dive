@@ -10,7 +10,7 @@ import org.scalatest.exceptions.TestFailedException
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Succeeded, FlatSpec, AsyncFlatSpec, Matchers}
 import react.{ReactiveLibraryUsage, ReactiveLibrary}
-import react.ReactiveLibrary.{Cancelable, Observable}
+import react.ReactiveLibrary.{Annotation, Cancelable, Observable}
 import scala.annotation.tailrec
 import scala.collection.mutable.MutableList
 import scala.concurrent.{ExecutionContext, Promise, Future}
@@ -728,14 +728,25 @@ trait ReactLibraryTests {
 
     import language.postfixOps
 
+    case class VarTag(i: Int) extends Annotation {
+      override def description: String = s"Var($i)"
+    }
 
-    val signals: List[Var[Int]] = 0 to 3 map { i => Var(0) withName(s"Var($i)") } toList
-    val events: List[EventSource[Int]] = 0 to 3 map { i => EventSource[Int] withName(s"EventSource($i)") } toList
+    case class EventSourceTag(i: Int) extends Annotation {
+      override def description: String = s"EventSource($i)"
+    }
+
+    case class ConstTag(i: Int) extends Annotation {
+      override def description: String = s"Const($i)"
+    }
+
+    val signals: List[Var[Int]] = 0 to 3 map { i => Var(0).tag(VarTag(i)) } toList
+    val events: List[EventSource[Int]] = 0 to 3 map { i => EventSource[Int].tag(EventSourceTag(i)) } toList
 
 
     val signalGen: Gen[Signal[Int]] =
       Gen.oneOf(
-        Gen.posNum[Int].map(z => (z.pure: Signal[Int]).withName(s"Const($z)")),
+        Gen.posNum[Int].map(z => (z.pure: Signal[Int]).tag(ConstTag(z))),
         Gen.oneOf(signals)
       )
 
@@ -747,7 +758,7 @@ trait ReactLibraryTests {
         ((x: Int, y: Int) => 0, "const0")
       ).flatMap { case (f, descr) =>
       signalGen.map {
-        z => z.map(x => (y: Int) => f(x, y)).withName(s"$descr(${z.name}, _)")
+        z => z.map(x => (y: Int) => f(x, y))
       }
     }
 
@@ -770,7 +781,7 @@ trait ReactLibraryTests {
         ((x: Int, y: Int) => 0, "const0")
       ).flatMap { case (f, descr) =>
         eventGen.map {
-          z => z.map(x => (y: Int) => f(x, y)).withName(s"$descr(${z.name}, _)")
+          z => z.map(x => (y: Int) => f(x, y))
         }
       }
 

@@ -1,12 +1,11 @@
 package react.selfrx.debugger.visualization
 
-package com.sap.marmolata.ui
-
 import org.scalajs.dom
 import org.scalajs.dom.Node
 import org.scalajs.dom.raw.Element
 import org.scalajs.jquery._
-import react.debug.AnnotateStack
+import react.ReactiveLibrary.{InternalAnnotation, Annotation}
+import react.debug.{InternalStrictMap, AnnotateStack}
 import react.selfrx.debugger.Debugger._
 import react.selfrx.debugger.JavaScriptFunctions.NodeProperties
 import react.selfrx.debugger.{JavaScriptFunctions, Debugger}
@@ -20,52 +19,87 @@ import scala.util.Random
 
 import SimpleDomWrapper._
 
+case class GraphNodeKey(color: String, singleNodes: Boolean = false)
+
+object GraphNodeKey {
+  implicit object GraphNodeKeyOrdering extends Ordering[GraphNodeKey] {
+    override def compare(x: GraphNodeKey, y: GraphNodeKey): Int = {
+      val result = x.color compare y.color
+      if (result == 0) {
+        x.singleNodes compare y.singleNodes
+      }
+      else {
+        result
+      }
+    }
+  }
+}
+
+case class GraphNode(key: GraphNodeKey, primitives: Seq[Primitive])
 
 class DrawGraph(container: dom.Node) {
   val drawGraph: JavaScriptFunctions.DrawGraph = new JavaScriptFunctions.DrawGraph(container,
     js.Dynamic.literal(
       edges = js.Dynamic.literal(arrows = "to")))
 
-  def redraw(selected: js.Array[TreeNode])(onSelected: NodeDescription => Unit): Unit = {
-    val allPrimitives = selected.toSeq.flatMap (d => d.primitives.map(p => (p, d.color))).
-      groupBy(w => w._1).mapValues { _.map(_._2).sorted.distinct }.toSeq.groupBy(_._2).mapValues(_.map(_._1))
+  def redraw(selected: Seq[GraphNode])(onSelected: NodeDescription => Unit): Unit = {
+    val allPrimitives: Map[Seq[GraphNodeKey], Seq[Primitive]] =
+      selected.toSeq.flatMap (d => d.primitives.map(p => (p, d.key))).
+      groupBy(_._1).mapValues { _.map(_._2).sorted.distinct }.toSeq.groupBy(_._2).mapValues(_.map(_._1))
 
-    val primGroups = allPrimitives.toSeq.map {
+    val primGroups = allPrimitives.toSeq.flatMap {
       case (colors, prims) =>
-        Debugger.PrimitiveGroup(colors, prims)
+        if (colors.exists(_.singleNodes)) {
+          //TODO: do some SinglePrimitive
+          prims.map(p => Debugger.PrimitiveGroup(colors, Seq(p)))
+        }
+        else {
+          Seq(Debugger.PrimitiveGroup(colors, prims))
+        }
     }
 
     def isObservable(p: Primitive): Boolean = {
-      p.isInstanceOf[Observable] && p.name != "internal.strictMap"
+      p.isInstanceOf[Observable] && !p.containsTag(InternalStrictMap)
     }
 
     def isNormal(p: Primitive): Boolean = {
-      p.name != "internal.strictMap"
+      !p.containsTag(InternalAnnotation)
     }
 
     drawGraph.redraw(primGroups, {
       case MultipleImportantNodes(PrimitiveGroup(_colors, prims)) =>
-        val colors = _colors.asInstanceOf[Seq[String]]
-        val obsCount = prims.filter(isObservable).length
-        val anyCount = prims.filter(isNormal).length
-        NodeProperties.coloredNode(s"${anyCount} ($obsCount)", colors.toList)
+        val colors = _colors.asInstanceOf[Seq[GraphNodeKey]]
+        val obsCount = prims.count(isObservable)
+        val anyCount = prims.count(isNormal)
+        NodeProperties.coloredNode(s"${anyCount} ($obsCount)", colors.map(_.color).toList)
       case MultipleNodes(_, prims) =>
-        val obsCount = prims.filter(isObservable).length
-        val anyCount = prims.filter(isNormal).length
-        NodeProperties(s"${anyCount} (${obsCount})", "white", None)
+        val obsCount = prims.count(isObservable)
+        val anyCount = prims.count(isNormal)
+        NodeProperties(s"${anyCount} (${obsCount})", "yellow", None)
     }, onSelected)
   }
 }
 
-case class TreeDefinition(name: String, prims: Seq[Primitive], showFiles: ShowFiles)
+case class TreeDefinition(name: String, prims: Seq[Primitive], showFiles: ShowFiles, showTags: ShowTags) {
+  def currentlySelected: Seq[react.selfrx.debugger.visualization.GraphNode] = {
+    showFiles.currentlySelected ++ showTags.currentlySelected
+  }
+}
+
+object TreeDefinition {
+  def newTreeDefinition(name: String, prims: Seq[Primitive], stackTrace: AnnotateStack, colorChooser: ColorChooser,
+                        sourceMapConsumerForFile: SourceMapConsumerForFile, redrawGraph: () => Unit) = {
+    TreeDefinition(name, prims,
+      new ShowFiles(prims.map(x => (x, stackTrace.stackFrom(x))).toMap, colorChooser, sourceMapConsumerForFile, redrawGraph),
+      new ShowTags(prims.toSet, colorChooser, redrawGraph))
+  }
+}
 
 class TreeViewWithGraphView(allPrims: Seq[Primitive], stackTrace: AnnotateStack, sourceMapConsumerForFile: SourceMapConsumerForFile) {
   private val colorChooser = new ColorChooser()
 
   private var trees: Seq[TreeDefinition] =
-    Seq(TreeDefinition(s"Main (${allPrims.size})",
-      allPrims,
-      new ShowFiles(allPrims.map(x => (x, stackTrace.stackFrom(x))).toMap, colorChooser, sourceMapConsumerForFile, redrawGraph)))
+    Seq(TreeDefinition.newTreeDefinition(s"Main (${allPrims.size})", allPrims, stackTrace, colorChooser, sourceMapConsumerForFile, redrawGraph))
 
   private val toolbar = newNode("ul", CssClass("nav"), CssClass("nav-tabs"))
   private var currentlyActive: Int = 0
@@ -87,20 +121,19 @@ class TreeViewWithGraphView(allPrims: Seq[Primitive], stackTrace: AnnotateStack,
 
   private def newActiveTreeview(index: Int): Unit = {
     jQuery(treeView2).children.detach
+    jQuery(treeView2).append(trees(index).showTags.treeView)
     jQuery(treeView2).append(trees(index).showFiles.treeView)
     currentlyActive = index
     redrawToolbar()
   }
 
   private def redrawGraph(): Unit = {
-    val selected = js.Array(trees.flatMap(_.showFiles.currentlySelected): _*)
-    drawGraph.redraw(selected) {
+    val selected = js.Array(trees.flatMap(_.currentlySelected): _*)
+    drawGraph.redraw(selected.toSeq) {
       case MultipleImportantNodes(PrimitiveGroup(_, prims)) =>
-        addTree(TreeDefinition(s"(${prims.length})", prims,
-          new ShowFiles(prims.map(x => (x, stackTrace.stackFrom(x))).toMap, colorChooser, sourceMapConsumerForFile, redrawGraph)))
+        addTree(TreeDefinition.newTreeDefinition(s"(${prims.length})", prims, stackTrace, colorChooser, sourceMapConsumerForFile, redrawGraph))
       case MultipleNodes(_, prims) =>
-        addTree(TreeDefinition(s"(${prims.length})", prims,
-          new ShowFiles(prims.map(x => (x, stackTrace.stackFrom(x))).toMap, colorChooser, sourceMapConsumerForFile, redrawGraph)))
+        addTree(TreeDefinition.newTreeDefinition(s"(${prims.length})", prims, stackTrace, colorChooser, sourceMapConsumerForFile, redrawGraph))
     }
   }
 
@@ -129,14 +162,124 @@ class TreeNode(
   val nodes: js.UndefOr[js.Array[TreeNode]] = js.undefined,
   val primitives: Seq[Primitive],
   val state: TreeNodeState = new TreeNodeState(),
-  var color: String = "black"
+  var color: String = "black",
+  val showCheckbox: Boolean = true
 ) extends js.Object
+
+trait ShowTree {
+  protected def colorChooser: ColorChooser
+  protected def redrawGraph: () => Unit
+  protected def tree: js.Array[TreeNode]
+
+  val treeView: dom.Element
+
+  def createTreeView(): dom.Element = {
+    val result = newNode("div", Css("width", "100%"))
+
+    jQuery(result).asInstanceOf[js.Dynamic].treeview(
+      Dynamic.literal(
+        data = tree,
+        levels = 1,
+        multiSelect = true,
+        showTags = true,
+        showCheckbox = true,
+        selectedBackColor = "white",
+        selectedColor = "black",
+        onNodeUnselected = (event: js.Any, data: js.Dynamic) => {
+          val node = jQuery(result).asInstanceOf[js.Dynamic].treeview("getNode", data.nodeId).asInstanceOf[TreeNode]
+          node.color = colorChooser.nextColor()
+          redrawGraph()
+        },
+        onNodeSelected = (event: js.Any, data: TreeNode) => {
+          colorChooser.giveBackColor(data.color)
+          redrawGraph()
+        },
+        onNodeChecked = (events: js.Any, data: TreeNode) => {
+          redrawGraph()
+        },
+        onNodeUnchecked = (events: js.Any, data: TreeNode) => {
+          redrawGraph()
+        }))
+
+    result
+  }
+
+
+
+  def currentlySelected: Seq[react.selfrx.debugger.visualization.GraphNode] = {
+    val result = jQuery(treeView).asInstanceOf[js.Dynamic].treeview("getUnselected").asInstanceOf[js.Array[TreeNode]]
+    result.toSeq.map(t => react.selfrx.debugger.visualization.GraphNode(GraphNodeKey(t.color, t.state.checked), t.primitives))
+  }
+}
+
+case class TagTree(val currentTag: Option[Annotation], var children: Map[Annotation, TagTree]) {
+  def addTag(tag: Annotation): Option[TagTree] = {
+    val parent: Option[Annotation] = tag.parent
+    if (parent == currentTag) {
+      Some(children.getOrElse(tag, {
+        val result = TagTree(Some(tag), Map.empty)
+        children += ((tag, result))
+        result
+      }))
+    }
+    else {
+      parent match {
+        case Some(t) =>
+          val n = addTag(t)
+          n.flatMap(_.addTag(tag))
+        case None =>
+          None
+      }
+    }
+  }
+
+  def toTreeNode(allPrims: Seq[Primitive]): js.UndefOr[js.Array[TreeNode]] = {
+    if (children.isEmpty) {
+      js.undefined
+    }
+    else {
+      js.Array(
+        children.map { case (tag, tagTree) =>
+          val prims = allPrims.filter(_.containsTag(tag))
+          new TreeNode(
+            text = tag.description,
+            tags = js.Array(s" ${prims.size} "),
+            primitives = prims,
+            nodes = tagTree.toTreeNode(prims)
+          )
+        }.toSeq: _*)
+    }
+  }
+}
+
+object TagTree {
+  def apply(tags: Seq[Annotation]): TagTree = {
+    val result = TagTree(None, Map.empty)
+    tags.foreach { result.addTag(_) }
+    result
+  }
+}
+
+class ShowTags(
+  reactives: Set[Primitive],
+  val colorChooser: ColorChooser,
+  val redrawGraph: () => Unit
+) extends ShowTree {
+
+  private val tags: Set[Annotation] = reactives.flatMap(_.allAnnotations)
+
+  private val tagTree: TagTree = TagTree(tags.toSeq)
+
+  val tree = tagTree.toTreeNode(reactives.toSeq).getOrElse(js.Array())
+
+  val treeView = createTreeView()
+}
 
 class ShowFiles(
    reactives: Map[Primitive, Seq[StackTraceElement]],
-   colorChooser: ColorChooser,
+   val colorChooser: ColorChooser,
    sourceMapConsumerForFile: SourceMapConsumerForFile,
-   redrawGraph: () => Unit) {
+   val redrawGraph: () => Unit) extends ShowTree {
   val files: Map[Filename, FileElements] = {
     val listOfFiles =
       reactives.toSeq.flatMap {
@@ -179,6 +322,7 @@ class ShowFiles(
       new TreeNode(
         text = s"[${prim.getClass}] $now",
         tags = js.Array(),
+        showCheckbox = false,
         primitives = Seq(prim)
       )
     }): _*)
@@ -210,9 +354,7 @@ class ShowFiles(
     js.Array(result: _*)
   }
 
-  val treeView = {
-    val result = newNode("div", Css("width", "100%"))
-    val tree =
+  val tree =
       js.Array(files.toSeq.sortBy { case (_, FileElements(allPrimitives, _)) => allPrimitives.length }.map { case (filename, FileElements(allPrimitives, lines)) =>
         new TreeNode(
           text = filename.source,
@@ -228,34 +370,7 @@ class ShowFiles(
           }.toSeq: _*))
       }.toSeq: _*)
 
-
-    // we use selected/unselected in the opposite way it's normally used
-    // because we want to color 'selected' nodes in different colors and this is
-    // currently only possible for unselected nodes
-
-    jQuery(result).asInstanceOf[js.Dynamic].treeview(
-      Dynamic.literal(
-        data = tree,
-        levels = 1,
-        multiSelect = true,
-        showTags = true,
-        selectedBackColor = "white",
-        selectedColor = "black",
-        onNodeUnselected = (event: js.Any, data: js.Dynamic) => {
-          val node = jQuery(result).asInstanceOf[js.Dynamic].treeview("getNode", data.nodeId).asInstanceOf[TreeNode]
-          node.color = colorChooser.nextColor()
-          redrawGraph()
-        },
-        onNodeSelected = (event: js.Any, data: TreeNode) => {
-          colorChooser.giveBackColor(data.color)
-          redrawGraph()
-        }))
-    result
-  }
-
-  def currentlySelected: js.Array[TreeNode] = {
-    jQuery(treeView).asInstanceOf[js.Dynamic].treeview("getUnselected").asInstanceOf[js.Array[TreeNode]]
-  }
+  val treeView = createTreeView()
 }
 
 class ReactiveDebugger(debugger: react.selfrx.debugger.Debugger, stackTrace: AnnotateStack, sourceMapConsumerForFile: SourceMapConsumerForFile)  {

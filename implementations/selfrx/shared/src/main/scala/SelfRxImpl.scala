@@ -118,11 +118,10 @@ object NoRecording extends Recording {
   override def finishCurrentRecording(recording: RecordingSliceBuilder): Unit = {}
 }
 
-trait PrettyPrimitive extends Nameable {
+trait PrettyPrimitive extends Annotateable {
   self: Primitive =>
-  override var name: String = ""
 
-  override def toString: String = s"$name+$level (${super.toString})"
+  override def toString: String = s"$prettyPrintAnnotations+$level (${super.toString})"
 }
 
 // Marker interface for signals that have to record something to be replayed
@@ -285,7 +284,7 @@ trait Signal[A] extends Primitive with SignalTrait[A] {
   override def evaluateDuringPlayback(): Boolean = true
 }
 
-trait Observable extends Nameable {
+trait Observable extends Annotateable {
   def kill(): Unit
 }
 
@@ -376,9 +375,8 @@ class ReassignableVariable[A](var init2: Signal[_ <: A])(implicit recording: Rec
 class ObservableCancel(obs: Observable) extends Cancelable {
   override def kill(): Unit = obs.kill()
 
-  override def name: String = obs.name
-
-  override def name_=(s: String): Unit = obs.name_=(s)
+  override def addAnnotation(annotation: Annotation): Unit = obs.tag(annotation)
+  override def allAnnotations: Seq[Annotation] = obs.allAnnotations
 }
 
 class MappedSignal[A, B](s: Signal[_ <: A], f: A => B) extends Signal[B] {

@@ -1,0 +1,86 @@
+import cats.Apply
+import org.scalajs.dom
+import org.scalajs.dom.Element
+import react.ReactiveLibrary.Annotation
+import react.debug.AnnotateStack
+import react.selfrx.debugger.visualization.SourceMapConsumerForFile
+import react.selfrx.debugger.{DebuggerSelfRxImpl, Debugger}
+import react.selfrx.debugger.visualization.ReactiveDebugger
+
+import scala.scalajs.js.annotation.{JSName, JSExport}
+
+import reactive.library._
+import reactive.library.syntax._
+
+trait Renderable {
+  val domNode: dom.Element
+
+  final def renderTopLevel(id: String): Unit = {
+    dom.document.getElementById(id).appendChild(domNode)
+  }
+
+  final def above(other: Renderable): Renderable = Vertical(this, other)
+}
+
+object ObjectTag extends Annotation {
+  override def description: String = "Renderable"
+}
+
+object EditTag extends Annotation {
+  override def description: String = "EditBox"
+  override def parent: Option[Annotation] = Some(ObjectTag)
+}
+
+object LabelTag extends Annotation {
+  override def description: String = "Label"
+  override def parent: Option[Annotation] = Some(ObjectTag)
+}
+
+case class Label(initialValue: String = "") extends Renderable {
+  val domNode: dom.Element = dom.document.createElement("span")
+  val value: ReassignableVar[String] = ReassignableVar(initialValue)
+  value.observe(x => domNode.textContent = x)
+  value.tag(LabelTag)
+}
+
+case class EditBox(initialValue: String = "") extends Renderable {
+  val domNode: dom.Element = dom.document.createElement("input")
+  domNode.setAttribute("type", "text")
+
+  val value: Var[String] = Var(initialValue).tag(EditTag)
+}
+
+class ReactiveDebugger0 extends Renderable {
+  private val debugger: Debugger = reactive.library.asInstanceOf[DebuggerSelfRxImpl].debugger
+  private val stackTrace: AnnotateStack = reactive.library.asInstanceOf[AnnotateStack]
+
+  val reactiveDebugger: ReactiveDebugger =
+    new ReactiveDebugger(debugger, stackTrace, new SourceMapConsumerForFile("target/scala-2.11/reactive-example-fastopt.js.map"))
+
+  override val domNode: Element = {
+    val result = dom.document.createElement("div")
+    reactiveDebugger.renderAt(result)
+    result
+  }
+}
+
+case class Vertical(rs: Renderable*) extends Renderable {
+  val domNode: Element = dom.document.createElement("div")
+  rs.foreach { ele => domNode.appendChild(ele.domNode) }
+}
+
+@JSExport("MainR")
+object Main {
+  @JSExport
+  def createMain(): Unit = {
+    val l1 = Label("hallo")
+    val l2 = Label("welt")
+    val e3 = EditBox("")
+    val l3 = Label("")
+    l3.value subscribe implicitly[Apply[Signal]].map3(l1.value, l2.value, e3.value)((x, y, z) => s"$x $y $z")
+
+
+    val layout = l1 above l2 above e3 above l3 above new ReactiveDebugger0()
+    layout.renderTopLevel("react")
+  }
+}
