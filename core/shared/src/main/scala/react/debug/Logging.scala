@@ -151,6 +151,11 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
   override protected[react] def triggerWhen[A, B, C](s: Signal[A], e: Event[B], f: (A, B) => C): Event[C] =
     newEvent(underlying.triggerWhen(s.u, e.u, f))
 
+
+  override protected[react] def fold[A, B](e: Event[A], init: B, fun: (A, B) => B): Signal[B] = {
+    newSignal(underlying.fold(e.u, init, fun))
+  }
+
   override implicit object eventApplicative extends FlatMap[Event] with EventOperationsTrait[Event] {
     override def map[A, B](fa: Event[A])(f: (A) => B): Event[B] =
       newEvent(underlying.eventApplicative.map(fa.u)(f))

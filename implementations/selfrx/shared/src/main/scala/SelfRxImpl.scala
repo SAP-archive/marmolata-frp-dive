@@ -41,6 +41,7 @@ class TriggerUpdate private (recordingSlice: RecordingSliceBuilder) {
           }
           else {
             if (recordingSlice.currentRecordingMode == RecordingMode.Record || p.evaluateDuringPlayback()) {
+              recordingSlice.aboutToRecalculate(p)
               p.recalculateRecursively(this)
               finishedEvaluating += p
             }
@@ -93,6 +94,8 @@ object TriggerUpdate {
 trait RecordingSliceBuilder {
   def addPrimitiveChange[A](p: RecordForPlayback[A], before: A, after: A)
   def currentRecordingMode: RecordingMode
+
+  def aboutToRecalculate(p: Primitive) = {}
 }
 
 trait Recording {
@@ -350,8 +353,8 @@ class ReassignableVariable[A](var init2: Signal[_ <: A])(implicit recording: Rec
 
     if (!isOrphan) {
       replaceParents(None, init2)
+      TriggerUpdate.doUpdate(record(oldInit2, init2, _), this)
     }
-    TriggerUpdate.doUpdate(record(oldInit2, init2, _), this)
   }
 
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
@@ -571,6 +574,29 @@ class SignalFromEvent[A](a: Event[_ <: A], init: A) extends Signal[A] with Recor
   }
 }
 
+class FoldSignal[A, B](a: Event[_ <: A], init: B, fun: (A, B) => B) extends Signal[B] with RecordForPlayback[B] {
+  override def becomeOrphan(): Unit = {}
+
+  addParent(a, None)
+
+  override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
+    val ev = strategy.getEvent(a).getOrElse(throw new SelfRxException("event is not triggered, but it should have been (FoldSignal)"))
+    val lastValue = now
+    val newValue = fun(ev, lastValue)
+    if (newValue != lastValue) {
+      record(lastValue, newValue, strategy)
+    }
+    updateValueTo(newValue, strategy)
+  }
+
+  override protected def recalculate(recusively: Option[TriggerUpdate]): B = init
+
+  override def playback(x: B, strategy: TriggerUpdate): Unit =
+    updateValueTo(x, strategy)
+
+  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
+}
+
 class EventFromSignal[A](s: Signal[_ <: A]) extends Event[A] {
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
     addParent(s, currentTrigger)
@@ -627,6 +653,9 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
 
   override def triggerWhen[A, B, C](s: Signal[A], e: Event[B], f: (A, B) => C): Event[C] =
     new TriggerWhenEvent(e, s, (x: B, y: A) => f(y, x))
+
+  override def fold[A, B](e: Event[A], init: B, fun: (A, B) => B): Signal[B] =
+    new FoldSignal(e, init, fun)
 
   override def implementationName: String = "selfrx implementation"
 

@@ -199,6 +199,7 @@ trait ReactiveLibrary {
   protected[react] def toEvent[A] (signal: Signal[A]): Event[A]
   protected[react] def futureToEvent[A] (f: Future[A])(implicit ec: ExecutionContext): Event[A]
   protected[react] def triggerWhen[A, B, C] (s: Signal[A], e: Event[B], f: (A, B) => C): Event[C]
+  protected[react] def fold[A, B] (e: Event[A], init: B, fun: (A, B) => B): Signal[B]
 
   def implementationName: String
 }

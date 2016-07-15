@@ -72,6 +72,13 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
     new EventSourceImpl[C, C](s.wrapped.zipWith(e.wrapped)(f))
   }
 
+
+  override protected[react] def fold[A, B](e: Event[A], init: B, fun: (A, B) => B): Signal[B] = {
+    new SignalImpl(e.wrapped.foldLeft(init) {(acc, ev) =>
+      fun(ev, acc)
+    }.distinct.cache(init))
+  }
+
   def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = {
     new EventSourceImpl(FutureToReadChannel(f))
   }
