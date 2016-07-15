@@ -3,6 +3,7 @@ import org.scalajs.dom
 import org.scalajs.dom.Element
 import react.ReactiveLibrary.Annotation
 import react.debug.{AnnotateStackAnnotation, AnnotateStack}
+import react.selfrx.debugger.updatelogger.{HasHistoryLogger, RecordingLogUpdates, LogSelfrxImpl}
 import react.selfrx.debugger.visualization.{NamedGraphNodeAnnotation, SourceMapConsumerForFile, ReactiveDebugger}
 import react.selfrx.debugger.{DebuggerSelfRxImpl, Debugger}
 
@@ -49,12 +50,20 @@ case class EditBox(initialValue: String = "") extends Renderable {
   val value: Var[String] = Var(initialValue).tag(EditTag)
 }
 
+case class Button() extends Renderable {
+  val domNode: dom.Element = dom.document.createElement("input")
+  domNode.setAttribute("type", "button")
+  val clicks: EventSource[Unit] = EventSource[Unit]
+  domNode.addEventListener(`type` = "click", (x: dom.raw.Event) => { clicks emit Unit; true })
+}
+
 class ReactiveDebugger0 extends Renderable {
   private val debugger: Debugger = reactive.library.asInstanceOf[DebuggerSelfRxImpl].debugger
   private val stackTrace: AnnotateStack = reactive.library.asInstanceOf[AnnotateStack]
+  private val historyLogger: RecordingLogUpdates = reactive.library.asInstanceOf[HasHistoryLogger].historyLogger
 
   val reactiveDebugger: ReactiveDebugger =
-    new ReactiveDebugger(debugger, stackTrace, new SourceMapConsumerForFile("target/scala-2.11/reactive-example-fastopt.js.map"))
+    new ReactiveDebugger(debugger, stackTrace, new SourceMapConsumerForFile("target/scala-2.11/reactive-example-fastopt.js.map"), historyLogger)
 
   override val domNode: Element = {
     val result = dom.document.createElement("div")
@@ -75,12 +84,15 @@ object Main {
     val l1 = Label("hallo")
     val l2 = Label("welt")
     val e3 = EditBox("")
+    val b = Button()
     val l3 = Label("")
     e3.value.tag(NamedGraphNodeAnnotation("hallo"))
-    l3.value subscribe implicitly[Apply[Signal]].map3(l1.value, l2.value, e3.value)((x, y, z) => s"$x $y $z")
 
+    val counter = b.clicks.count
 
-    val layout = l1 above l2 above e3 above l3 above new ReactiveDebugger0()
+    l3.value subscribe implicitly[Apply[Signal]].map4(l1.value, l2.value, e3.value, counter)((x, y, z, w) => s"$x $y $z $w")
+
+    val layout = l1 above l2 above e3 above l3 above b above new ReactiveDebugger0()
     layout.renderTopLevel("react")
   }
 }
