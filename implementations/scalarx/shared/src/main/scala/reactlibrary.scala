@@ -1,8 +1,8 @@
 import react.impls.ScalaRxImpl
-import react.{ReactiveLibraryUsage, ReactiveLibrary}
+import react.{ReactiveDeclaration, ReactiveLibraryUsage, ReactiveLibrary}
 
 package object reactive {
-  object Impl extends ScalaRxImpl with ReactiveLibraryUsage
+  object Impl extends ScalaRxImpl with ReactiveDeclaration
 
-  val library: ReactiveLibrary with ReactiveLibraryUsage = Impl
+  val library: ReactiveLibrary with ReactiveDeclaration = Impl
 }

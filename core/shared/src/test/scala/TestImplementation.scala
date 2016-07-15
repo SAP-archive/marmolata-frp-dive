@@ -11,7 +11,7 @@ trait TestImplementation extends Matchers with ReactLibraryTests {
   def shouldRunPropertyTests: Boolean
 
   reactLibrary.implementationName should behave like runLibraryTests
-  //if (shouldRunPropertyTests) {
-  //  it should behave like runPropertyTests
-  //}
+  if (shouldRunPropertyTests) {
+    it should behave like runPropertyTests
+  }
 }
