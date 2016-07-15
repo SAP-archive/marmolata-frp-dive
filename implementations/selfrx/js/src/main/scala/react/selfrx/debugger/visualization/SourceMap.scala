@@ -52,6 +52,9 @@ case class FilePosition(file: String, line: Int, column: Int, origLine: Int, ori
   def isSameAs(x: JavascriptPosition): Boolean = {
     origLine == x.line && origColumn == x.column
   }
+
+  override def toString(): String = s"${file}:${line}:${column} (${origLine}:${origColumn})"
+
 }
 
 object FilePosition {
