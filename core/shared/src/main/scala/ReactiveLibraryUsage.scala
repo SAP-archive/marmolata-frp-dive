@@ -93,8 +93,15 @@ trait ReactiveLibraryUsage {
     }
 
     def mergeEither[B](e: Event[B]): Event[Either[A, B]] = {
-
       implicitly[Mergeable[Event]].merge(event.map(Left(_)), e.map(Right(_)))
+    }
+
+    def fold[B](init: B)(foldFun: (A, B) => B): Signal[B] = {
+      self.fold(event, init, foldFun)
+    }
+
+    def count(): Signal[Int] = {
+      fold(0) { (x, y) => y + 1 }
     }
   }
 

@@ -216,6 +216,13 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultR
     new Event(result.filter(_._1).map(_._3))
   }
 
+
+  override protected[react] def fold[A, B](e: Event[A], init: B, fun: (A, B) => B): Signal[B] = {
+    new Signal(e.wrapped.fold(init) { (current, event) =>
+      event.map(x => fun(x.get, current)).getOrElse(current)
+    })
+  }
+
   def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = {
     new Event(f.map(x => Some(CompareUnequal(x)): Option[CompareUnequal[A]])(ec).toRx(None)(ec, implicitly[Ctx.Owner]))
   }

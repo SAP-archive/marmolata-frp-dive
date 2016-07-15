@@ -1,29 +1,13 @@
 package react.LibTests
 
-import java.io.ByteArrayOutputStream
-
 import algebra.Eq
-import com.sun.xml.internal.fastinfoset.tools.SAXEventSerializer
-import org.scalacheck.Test.{Result, TestCallback}
 import org.scalacheck.{Test, Gen, Arbitrary}
-import org.scalatest.exceptions.TestFailedException
-import org.scalatest.prop.PropertyChecks
-import org.scalatest.{Succeeded, FlatSpec, AsyncFlatSpec, Matchers}
-import react.{ReactiveLibraryUsage, ReactiveLibrary}
+import org.scalatest.{Succeeded, FlatSpec, Matchers}
+import react.ReactiveDeclaration
 import react.ReactiveLibrary.{Annotation, Cancelable, Observable}
-import scala.annotation.tailrec
-import scala.collection.mutable.MutableList
 import scala.concurrent.{ExecutionContext, Promise, Future}
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.duration._
 import scala.ref.WeakReference
 import scala.collection.mutable
-
-object ReactLibraryTests {
-  trait CancelableTrait {
-    var ref: Cancelable
-  }
-}
 
 // TODO this is probably somewhere in the standard library
 // TODO I have no clue where the bug is that makes it necessary to execute recurisive calls directly
@@ -34,18 +18,12 @@ class SimpleExecutionContext extends ExecutionContext {
   private var currentlyExecuting = false
 
   def execute(runnable: Runnable): Unit = {
-    //if (currentlyExecuting)
-    //  runnable.run()
-    //else
       queue = queue :+ (runnable, "")
   }
 
   def subExecutor(name: String): ExecutionContext =
     new ExecutionContext {
       override def execute(runnable: Runnable): Unit =
-        //if (currentlyExecuting)
-        //  runnable.run()
-        //else
           queue = queue :+ (runnable, name)
 
       override def reportFailure(cause: Throwable): Unit = self.reportFailure(cause)
@@ -88,18 +66,16 @@ class SimpleExecutionContext extends ExecutionContext {
 trait ReactLibraryTests {
   self: FlatSpec with Matchers =>
 
-  def collectValues[A](x: Observable[A]): mutable.Seq[A] with ReactLibraryTests.CancelableTrait = {
-    val result = new mutable.MutableList[A]() with ReactLibraryTests.CancelableTrait {
-      var ref: Cancelable = null
-    }
+  def collectValues[A](x: Observable[A]): mutable.Seq[A] = {
+    val result = new mutable.MutableList[A]()
     val obs = x.observe { (v: A) => result += v }
-    result.ref = obs
     result
   }
 
-
-  val reactLibrary: ReactiveLibrary with ReactiveLibraryUsage = reactLibrary_
-  def reactLibrary_ : ReactiveLibrary with ReactiveLibraryUsage
+  //we don't want to use early initializers, so the react library
+  //is defined by a def
+  final val reactLibrary: ReactiveDeclaration = reactLibrary_
+  def reactLibrary_ : ReactiveDeclaration
 
   private object DeprecationForwarder {
     // using workaround for https://issues.scala-lang.org/browse/SI-7934
@@ -119,6 +95,7 @@ trait ReactLibraryTests {
     import reactLibrary.syntax._
     import ReactLibraryTests._
 
+    behavior of s"ReactiveLibrary ${implementationName}"
 
     it should "not trigger this strange flatMap bug ;;;;" in {
       implicit val queue = new SimpleExecutionContext()
@@ -392,7 +369,8 @@ trait ReactLibraryTests {
       Succeeded
     }
 
-    it should "allow exceptions 2" in {
+    // would be nice to have!
+    ignore should "allow exceptions 2" in {
       val v = Var(0)
       val w = v.map { x => if (x == 7) throw new Exception("Hi") }
 
@@ -718,6 +696,55 @@ trait ReactLibraryTests {
       v := 4
 
       l shouldBe List(1, 2, 3, 4)
+    }
+
+    it should "support fold" in {
+      val e = EventSource[Unit]
+      val count = e.fold(0){ (x, y) => y + 1 }
+      val l = collectValues(count)
+
+      1 to 10 foreach { e emit Unit }
+
+      l shouldBe List(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    }
+
+    it should "support fold (2): events before the fold call don't change the result" in {
+      val e = EventSource[Unit]
+      e emit Unit
+
+      val count = e.fold(0){ (x, y) => y + 1 }
+      val l = collectValues(count)
+
+      1 to 10 foreach { _ => e emit Unit }
+
+      l shouldBe List(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    }
+
+    it should "support fold (3)" in {
+      val e = EventSource[Int]
+
+      e emit 1
+
+      val sum = e.fold(0)(_ + _)
+      1 to 5 foreach { e emit _ }
+
+      l shouldBe List(0, 1, 3, 6, 10, 15)
+    }
+
+    it should "allow tagging" in {
+      object Tag1 extends Annotation {
+        override def description: String = ""
+      }
+
+      object Tag2 extends Annotation {
+        override def description: String = ""
+        override def parent: Option[Annotation] = Some(Tag1)
+      }
+
+      val v = Var(7).tag(Tag2)
+      v.containsTag(Tag1) shouldBe true
+      v.containsTag(Tag2) shouldBe true
+      v.allAnnotations.should(contain).theSameElementsAs(Seq(Tag2))
     }
   }
 
