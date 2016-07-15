@@ -1,8 +1,11 @@
 package react.debug
 
-import react.ReactiveLibrary.Annotateable
+import react.ReactiveLibrary.{Annotation, Annotateable}
 
+import scala.annotation.tailrec
 import scala.collection.mutable
+
+trait AnnotateStackAnnotation extends Annotation
 
 trait AnnotateStack extends DebugLayer with EnsureLargeEnoughStackTrace {
   def checkStackframe(s: StackTraceElement): Boolean = true
@@ -17,13 +20,21 @@ trait AnnotateStack extends DebugLayer with EnsureLargeEnoughStackTrace {
     traces.getOrElse(t, Seq.empty)
   }
 
+  def annotateStackCondition(u: HasUnderlying[Annotateable]): Boolean = {
+    def shouldAnnotateStack(x: Annotation): Boolean =
+      x.isInstanceOf[AnnotateStackAnnotation] || x.parent.exists(shouldAnnotateStack)
+    u.under.allAnnotations.exists(shouldAnnotateStack)
+  }
+
   override def onNew(u: HasUnderlying[Annotateable]): Unit = {
     super.onNew(u)
-    val currentStackTrace = new RuntimeException().getStackTrace
-    val stackframes = currentStackTrace.collect {
-      case st if filterPackages.forall(!st.getClassName.startsWith(_)) && checkStackframe(st) => st
-    }.toSeq
-    traces += ((u.under, stackframes))
+    if (annotateStackCondition(u)) {
+      val currentStackTrace = new RuntimeException().getStackTrace
+      val stackframes = currentStackTrace.collect {
+        case st if filterPackages.forall(!st.getClassName.startsWith(_)) && checkStackframe(st) => st
+      }.toSeq
+      traces += ((u.under, stackframes))
+    }
   }
 
   override def implementationName: String = s"annotate-stack-of-${super.implementationName}"

@@ -19,12 +19,12 @@ object JavaScriptFunctions {
   object NodeProperties {
     def apply(label: String, color: String, title: Option[String]): NodeProperties = {
       new NodeProperties ((id: String) =>
-        new vis.GraphNode(id, label, title.map(x => x: js.UndefOr[String]).getOrElse(js.undefined), color)
+        new vis.GraphNode(id, label, title.orUndefined, color)
       )
     }
 
-    def coloredNode(label: String, colors: List[String]) = {
-      new NodeProperties((id: String) => vis.GraphNode.coloredNode(id, label, colors))
+    def coloredNode(label: String, colors: List[String], title: Option[String] = None) = {
+      new NodeProperties((id: String) => vis.GraphNode.coloredNode(id, label, colors, title))
     }
   }
 

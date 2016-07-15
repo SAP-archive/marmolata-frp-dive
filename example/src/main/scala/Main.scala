@@ -2,10 +2,9 @@ import cats.Apply
 import org.scalajs.dom
 import org.scalajs.dom.Element
 import react.ReactiveLibrary.Annotation
-import react.debug.AnnotateStack
-import react.selfrx.debugger.visualization.SourceMapConsumerForFile
+import react.debug.{AnnotateStackAnnotation, AnnotateStack}
+import react.selfrx.debugger.visualization.{NamedGraphNodeAnnotation, SourceMapConsumerForFile, ReactiveDebugger}
 import react.selfrx.debugger.{DebuggerSelfRxImpl, Debugger}
-import react.selfrx.debugger.visualization.ReactiveDebugger
 
 import scala.scalajs.js.annotation.{JSName, JSExport}
 
@@ -22,7 +21,7 @@ trait Renderable {
   final def above(other: Renderable): Renderable = Vertical(this, other)
 }
 
-object ObjectTag extends Annotation {
+object ObjectTag extends AnnotateStackAnnotation {
   override def description: String = "Renderable"
 }
 
@@ -77,6 +76,7 @@ object Main {
     val l2 = Label("welt")
     val e3 = EditBox("")
     val l3 = Label("")
+    e3.value.tag(NamedGraphNodeAnnotation("hallo"))
     l3.value subscribe implicitly[Apply[Signal]].map3(l1.value, l2.value, e3.value)((x, y, z) => s"$x $y $z")
 
 
