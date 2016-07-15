@@ -68,10 +68,30 @@ class DrawGraph(container: dom.Node) {
 
     drawGraph.redraw(primGroups, {
       case MultipleImportantNodes(PrimitiveGroup(_colors, prims)) =>
-        val colors = _colors.asInstanceOf[Seq[GraphNodeKey]]
-        val obsCount = prims.count(isObservable)
-        val anyCount = prims.count(isNormal)
-        NodeProperties.coloredNode(s"${anyCount} ($obsCount)", colors.map(_.color).toList)
+        //TODO: add SingleNode
+        if (prims.length != 1) {
+          val colors = _colors.asInstanceOf[Seq[GraphNodeKey]]
+          val obsCount = prims.count(isObservable)
+          val anyCount = prims.count(isNormal)
+          NodeProperties.coloredNode(s"${anyCount} ($obsCount)", colors.map(_.color).toList)
+        }
+        else {
+          val prim = prims.head
+          prim.allAnnotations.collectFirst { case x: GraphNodeVisualizationAnnotation => x } match {
+            case None =>
+              val colors = _colors.asInstanceOf[Seq[GraphNodeKey]]
+              val title = prim match {
+                case x: Signal[_] =>
+                  Some(x.now.toString)
+                case _ =>
+                  None
+              }
+              NodeProperties.coloredNode(prim.getClass.getSimpleName, colors.map(_.color).toList, title)
+            case Some(x) =>
+              x.graphNode(prim, _colors.asInstanceOf[Seq[GraphNodeKey]].map(_.color))
+          }
+
+        }
       case MultipleNodes(_, prims) =>
         val obsCount = prims.count(isObservable)
         val anyCount = prims.count(isNormal)

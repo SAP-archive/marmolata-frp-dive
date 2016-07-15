@@ -26,7 +26,7 @@ object GraphNode {
     def createObjectURL(blob: Blob): js.Any = js.native
   }
 
-  def coloredNode(id: String, label: String, colors: List[String]) = {
+  def coloredNode(id: String, label: String, colors: List[String], title: Option[String] = None) = {
 
     def posOfNthColor(index: Int): Int = {
       index * heightOfNode / colors.length
@@ -54,7 +54,7 @@ object GraphNode {
 
     new GraphNode(id = id,
       label = label,
-      title = js.undefined,
+      title = title.orUndefined,
       image = image,
       shape = "image"
     )
