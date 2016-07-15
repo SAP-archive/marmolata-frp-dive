@@ -41,6 +41,7 @@ class TriggerUpdate private (recordingSlice: RecordingSliceBuilder) {
           }
           else {
             if (recordingSlice.currentRecordingMode == RecordingMode.Record || p.evaluateDuringPlayback()) {
+              recordingSlice.aboutToRecalculate(p)
               p.recalculateRecursively(this)
               finishedEvaluating += p
             }
@@ -93,6 +94,8 @@ object TriggerUpdate {
 trait RecordingSliceBuilder {
   def addPrimitiveChange[A](p: RecordForPlayback[A], before: A, after: A)
   def currentRecordingMode: RecordingMode
+
+  def aboutToRecalculate(p: Primitive) = {}
 }
 
 trait Recording {
@@ -350,8 +353,8 @@ class ReassignableVariable[A](var init2: Signal[_ <: A])(implicit recording: Rec
 
     if (!isOrphan) {
       replaceParents(None, init2)
+      TriggerUpdate.doUpdate(record(oldInit2, init2, _), this)
     }
-    TriggerUpdate.doUpdate(record(oldInit2, init2, _), this)
   }
 
   override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
