@@ -28,9 +28,9 @@ build:
     commands:
       - sbt --warn -Dsbt.ivy.home=$IVY2 scalastyle compile doc
       - sbt -Dsbt.ivy.home=$IVY2 coverage
-      - sbt -Dsbt.ivy.home=$IVY2 scalarxJVM/test || true
-      - sbt -Dsbt.ivy.home=$IVY2 selfrxJVM/test || true
-      - sbt -Dsbt.ivy.home=$IVY2 metarxJVM/test || true
+      - sbt -Dsbt.ivy.home=$IVY2 scalarxJVM/coverage scalarxJVM/test scalarxJVM/coverageReport || true
+      - sbt -Dsbt.ivy.home=$IVY2 selfrxJVM/coverage selfrxJVM/test selfrxJVM/coverageReport || true
+      - sbt -Dsbt.ivy.home=$IVY2 metrarxJVM/coverage metarxJVM/test metarxJVM/coverageReport || true
       - sbt -Dsbt.ivy.home=$IVY2 coverageReport
       - sbt -Dsbt.ivy.home=$IVY2 coverageAggregate
   publish_coverage:
