@@ -27,6 +27,32 @@ build:
       - IVY2=.ivy2
     commands:
       - sbt --warn -Dsbt.ivy.home=$IVY2 scalastyle compile doc
+      - sbt -Dsbt.ivy.home=$IVY2 coverage
+      - sbt -Dsbt.ivy.home=$IVY2 scalarxJVM/test || true
+      - sbt -Dsbt.ivy.home=$IVY2 selfrxJVM/test || true
+      - sbt -Dsbt.ivy.home=$IVY2 metarxJVM/test || true
+      - sbt -Dsbt.ivy.home=$IVY2 coverageReport
+      - sbt -Dsbt.ivy.home=$IVY2 coverageAggregate
+  publish_coverage:
+    image: marmolata/scala-build
+    when:
+      branch: [dev, master]
+      event: push
+    commands:
+      - export BASE=/var/www/coverage/${CI_REPO##*/}
+      - ssh core@mo-4249591b5.mo.sap.corp mkdir -p "${BASE}/${CI_BUILD_NUMBER}" "${BASE}/latest"
+      - rsync -aqSD --ignore-errors --force --delete jvm/target/scala-2.11/scoverage-report/ core@mo-4249591b5.mo.sap.corp:"${BASE}/${CI_BUILD_NUMBER}"
+      - ssh core@mo-4249591b5.mo.sap.corp "rsync -aqSD --ignore-errors --force --delete ${BASE}/\`ls $BASE | sort -rn | head -n 1\`/ ${BASE}/latest"
+  publish_test:
+    image: marmolata/scala-build
+    when:
+      branch: [dev, master]
+      event: push
+    commands:
+      - export BASE=/var/www/test-reports/${CI_REPO##*/}
+      - ssh core@mo-4249591b5.mo.sap.corp mkdir -p "${BASE}/${CI_BUILD_NUMBER}" "${BASE}/latest"
+      - rsync -aqSD --ignore-errors --force --delete target/test-reports/ core@mo-4249591b5.mo.sap.corp:"${BASE}/${CI_BUILD_NUMBER}"
+      - ssh core@mo-4249591b5.mo.sap.corp "rsync -aqSD --ignore-errors --force --delete ${BASE}/\`ls $BASE | sort -rn | head -n 1\`/ ${BASE}/latest"
   publish_documentation:
     image: marmolata/scala-build
     environment:
@@ -75,3 +101,9 @@ build:
     when:
       event: tag
       branch: master
+publish:
+  coverage:
+     token: 929ecd6749c02137749859205788389ebbf0e883
+     server: http://mo-4249591b5.mo.sap.corp:8001
+     include: lcov.info
+
