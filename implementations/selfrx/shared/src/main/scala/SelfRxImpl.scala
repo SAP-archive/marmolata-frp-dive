@@ -22,29 +22,49 @@ class TriggerUpdate private (recordingSlice: RecordingSliceBuilder) {
     currentEvents.get(event).map(_.asInstanceOf[A])
   }
 
-  var currentlyEvaluating: SortedMap[Int, HashSet[Primitive]] = SortedMap.empty
-  var finishedEvaluating: HashSet[Primitive] = HashSet.empty
-  var currentEvents: HashMap[Primitive, Any] = HashMap.empty
+  private var _currentLevel: Int = 0
+  private var currentlyEvaluating: SortedMap[Int, HashSet[Primitive]] = SortedMap.empty
+  private var currentEvents: HashMap[Primitive, Any] = HashMap.empty
+  private var scheduledRemovals: Seq[Function0[Unit]] = Seq.empty
 
+  private[this] var inImmediateInsert: Boolean = false
   def insert(p: Primitive): Unit = {
-    currentlyEvaluating += ((p.level, currentlyEvaluating.getOrElse(p.level, HashSet.empty) + p))
+    if (!inImmediateInsert) {
+      if (currentLevel <= p.level) {
+        currentlyEvaluating += ((p.level, currentlyEvaluating.getOrElse(p.level, HashSet.empty) + p))
+      } else {
+        inImmediateInsert = true
+        recalculatePrimitive(p)
+        inImmediateInsert = false
+      }
+    }
+  }
+
+  def currentLevel: Int = _currentLevel
+
+  def scheduleRemoveParents(f: => Unit): Unit = {
+    scheduledRemovals +:= (() => f)
+  }
+
+  private[this] def recalculatePrimitive(p: Primitive): Unit = {
+    if (recordingSlice.currentRecordingMode == RecordingMode.Record || p.evaluateDuringPlayback()) {
+      recordingSlice.aboutToRecalculate(p)
+      p.recalculateRecursively(this)
+    }
   }
 
   def evaluateNext(): Boolean = {
     currentlyEvaluating.headOption match {
       case None => false
       case Some((level, elements)) =>
+        _currentLevel = level
         currentlyEvaluating = currentlyEvaluating.tail
         elements.foreach { p =>
           if (p.level > level) {
             insert(p)
           }
           else {
-            if (recordingSlice.currentRecordingMode == RecordingMode.Record || p.evaluateDuringPlayback()) {
-              recordingSlice.aboutToRecalculate(p)
-              p.recalculateRecursively(this)
-              finishedEvaluating += p
-            }
+            recalculatePrimitive(p)
           }
         }
         true
@@ -53,10 +73,7 @@ class TriggerUpdate private (recordingSlice: RecordingSliceBuilder) {
 
   def evaluate(): Unit = {
     while (evaluateNext()) { }
-  }
-
-  def finishedRecalculating(p: Primitive): Boolean = {
-    finishedEvaluating.contains(p)
+    scheduledRemovals foreach { _() }
   }
 
   def addRecording[A](p: RecordForPlayback[A], before: A, after: A): Unit = {
@@ -65,6 +82,10 @@ class TriggerUpdate private (recordingSlice: RecordingSliceBuilder) {
 }
 
 object TriggerUpdate {
+  def doCreatePrimitive(f: TriggerUpdate => Unit)(implicit recording: Recording): Unit = {
+    doPrimitiveUpdate { f }
+  }
+
   def doUpdate(recordings: TriggerUpdate => Unit, p: Primitive*)(implicit recording: Recording): Unit = {
     doPrimitiveUpdate { t =>
       recordings(t)
@@ -140,28 +161,27 @@ trait RecordForPlayback[A] {
 
 trait Primitive extends Object with PrettyPrimitive {
   def becomeOrphan(): Unit
-  def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit
+  def getFirstChild(currentTrigger: TriggerUpdate): Unit
+  // recalculates this primitive
+  // may schedule itself for recalculation (e.g. after other dynamic children have been added and recalculation is needed in any case)
+  //  responsible for
+  //  - schedule recalculation of children
   def recalculateRecursively(strategy: TriggerUpdate): Unit
-  def evaluateDuringPlayback(): Boolean
 
-  var level: Int = 0
-  private var children: HashSet[Primitive] = HashSet.empty
-  private var parents: HashSet[Primitive] = HashSet.empty
+  private[this] var _level: Int = 0
+  def level: Int = _level
+  private[this] def level_=(to: Int): Unit = _level = to
 
-  final def addParent(p: Primitive, currentTrigger: Option[TriggerUpdate]): Unit = {
+  private[this] var children: HashSet[Primitive] = HashSet.empty
+  private[this] var parents: HashSet[Primitive] = HashSet.empty
+
+  final def addParent(p: Primitive, currentTrigger: TriggerUpdate): Unit = {
     if (!(parents contains p)) {
-      var shouldRecalculate = false
 
       parents += p
       val minimumLevel = p.addChild(this, currentTrigger)
       if (level <= minimumLevel) {
-        incrementLevelAbove(minimumLevel)
-      }
-
-      currentTrigger.foreach { t =>
-        if (t.finishedRecalculating(p) || shouldRecalculate) {
-          t.insert(this)
-        }
+        incrementLevelAbove(minimumLevel, currentTrigger)
       }
     }
   }
@@ -169,36 +189,24 @@ trait Primitive extends Object with PrettyPrimitive {
   final def getChildren(): HashSet[Primitive] = children
   final def getParents(): HashSet[Primitive] = parents
 
-  final def replaceParents(currentTrigger: Option[TriggerUpdate], p: Primitive*): Unit = {
-    var shouldRecalculate = false
-
+  final def replaceParents(currentTrigger: TriggerUpdate, p: Primitive*): Unit = {
     parents.foreach { x =>
       if (!p.contains(x)) {
         x.removeChild(this)
       }
     }
+
     p.foreach { x =>
       if (!parents.contains(x)) {
         x.addChild(this, currentTrigger)
-      }
-      currentTrigger foreach { t =>
-        if (t.finishedRecalculating(x)) {
-          shouldRecalculate = true
-        }
       }
     }
     parents = HashSet(p: _*)
 
     val minimumLevel = p.map(_.level).max
-    if (level <= minimumLevel) {
-      incrementLevelAbove(minimumLevel)
-      shouldRecalculate = true
-    }
-
-    if (shouldRecalculate) {
-      currentTrigger foreach {
-        _.insert(this)
-      }
+    val result = !(level <= minimumLevel)
+    if (!result) {
+      incrementLevelAbove(minimumLevel, currentTrigger)
     }
   }
 
@@ -206,7 +214,7 @@ trait Primitive extends Object with PrettyPrimitive {
     children.foreach { strategy.insert(_) }
   }
 
-  private def addChild(child: Primitive, currentTrigger: Option[TriggerUpdate]): Int = {
+  private def addChild(child: Primitive, currentTrigger: TriggerUpdate): Int = {
     if (children.isEmpty) {
       getFirstChild(currentTrigger)
     }
@@ -223,6 +231,17 @@ trait Primitive extends Object with PrettyPrimitive {
     }
   }
 
+  private def removeChild(child: Primitive, strategy: TriggerUpdate): Unit = {
+    children -= child
+    if (children.isEmpty) {
+      strategy.scheduleRemoveParents {
+        if (children.isEmpty) {
+          becomeOrphan()
+        }
+      }
+    }
+  }
+
   protected final def isOrphan: Boolean = children.isEmpty
 
   protected final def removeParents(): Unit = {
@@ -230,20 +249,64 @@ trait Primitive extends Object with PrettyPrimitive {
     parents = HashSet.empty
   }
 
-  private def incrementLevelAbove(newLevel: Int): Unit = {
+  private[this] def incrementLevelAbove(newLevel: Int, strategy: TriggerUpdate): Unit = {
     if (newLevel >= level) {
       level = newLevel + 1
-      children.foreach { _.incrementLevelAbove(level) }
+      children.foreach { _.incrementLevelAboveOrRemoveParent(level, this, strategy) }
     }
   }
 
+  private def incrementLevelAboveOrRemoveParent(newLevel: Int, parent: Primitive, strategy: TriggerUpdate): Unit = {
+    if (newLevel >= level) {
+      incrementLevelOrRemoveParent(() => incrementLevelAbove(newLevel, strategy), parent, strategy)
+    }
+  }
+
+  protected def incrementLevelOrRemoveParent(increment: () => Unit, parent: Primitive, strategy: TriggerUpdate): Unit = {
+    increment()
+  }
+
   protected def resetLevel(): Unit = {
-    assert(parents.isEmpty)
+    require(parents.isEmpty)
     level = 0
+  }
+
+  def evaluateDuringPlayback(): Boolean
+}
+
+trait TrackDependency extends TrackDependencyTrait {
+  def get[A](s: Signal[A]): A
+  def breakLoop(): Unit
+}
+
+object TrackDependencyNow extends TrackDependency {
+  override def get[A](s: Signal[A]): A = s.now
+  override def breakLoop(): Unit = {}
+}
+
+sealed trait Estimate[+A] {
+  def getOrElse[B >: A](x: =>B): B
+  def foreach(x: A => Unit): Unit
+}
+
+object Estimate {
+  object None extends Estimate[Nothing] {
+    override def getOrElse[B >: Nothing](x: => B): B = x
+    override def foreach(x: (Nothing) => Unit): Unit = {}
+  }
+
+  case class Exact[+A](value: A) extends Estimate[A] {
+    override def getOrElse[B >: A](x: => B): B = value
+    override def foreach(x: (A) => Unit): Unit = x(value)
+  }
+
+  case class Approximately[+A](value: A) extends Estimate[A] {
+    override def getOrElse[B >: A](x: => B): B = value
+    override def foreach(x: (A) => Unit): Unit = x(value)
   }
 }
 
-trait Signal[A] extends Primitive with SignalTrait[A] {
+trait Signal[A] extends Primitive with SignalTrait[A, TrackDependency] {
   type Val = A
 
   protected def recalculate(recusively: Option[TriggerUpdate]): A
@@ -278,21 +341,54 @@ trait Signal[A] extends Primitive with SignalTrait[A] {
     }
   }
 
+  // return an estimation of the current value
+  // has to return Exact(a) when currentValue is defined
+  // otherwise, can either return None or Approximately[anything]
+  final def nowEstimate(strategy: TriggerUpdate): Estimate[A] = currentValue match {
+    case None => estimate(strategy)
+    case Some(x) => Estimate.Exact(x)
+  }
+
+  protected[this] def estimate(strategy: TriggerUpdate): Estimate[A] = {
+    try {
+      Estimate.Approximately(recalculate(None))
+    }
+    catch {
+      case _: Throwable => Estimate.None
+    }
+  }
+
   override def observe(f: (A) => Unit): Cancelable = {
-    val obs = new ObservableSignal(this, f)
-    f(now)
-    new ObservableCancel(obs)
+    new ObservableSignal(this, f)
+  }
+
+  def apply()(implicit td: TrackDependency): A = {
+    td.get(this)
   }
 
   override def evaluateDuringPlayback(): Boolean = true
 }
 
-trait Observable extends Annotateable {
-  def kill(): Unit
+trait RecalculateNow[A] {
+  self: Signal[A] =>
+  override protected def recalculate(recursively: Option[TriggerUpdate]): A = {
+    require(recursively.isEmpty, "recalculateRecursively doesn't call recalculate")
+    calculateNow
+  }
+
+  // this has to be overwritten (scala doesn't allow to make a def abstract again unfortunately)
+  override def recalculateRecursively(strategy: TriggerUpdate): Unit
+
+  protected[this] def calculateNow: A
 }
 
+trait Observable extends Annotateable with Cancelable
+
 class ObservableSignal[A](s: Signal[A], f: A => Unit) extends Primitive with Observable {
-  addParent(s, None)
+  TriggerUpdate.doCreatePrimitive { tu =>
+    addParent(s, tu)
+    tu.insert(this)
+  }(NoRecording)
 
   override def becomeOrphan(): Unit = {}
 
@@ -300,7 +396,7 @@ class ObservableSignal[A](s: Signal[A], f: A => Unit) extends Primitive with Obs
     f(s.now)
   }
 
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {}
 
   def kill(): Unit = removeParents()
 
@@ -308,7 +404,9 @@ class ObservableSignal[A](s: Signal[A], f: A => Unit) extends Primitive with Obs
 }
 
 class ObservableEvent[A](e: Event[A], f: A => Unit) extends Primitive with Observable {
-  addParent(e, None)
+  TriggerUpdate.doCreatePrimitive {
+    addParent(e, _)
+  }(NoRecording)
 
   override def becomeOrphan(): Unit = {}
 
@@ -318,17 +416,17 @@ class ObservableEvent[A](e: Event[A], f: A => Unit) extends Primitive with Obser
     })
   }
 
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {}
 
   def kill(): Unit = removeParents()
 
   override def evaluateDuringPlayback(): Boolean = false
 }
 
-class Variable[A](var init: A)(implicit recording: Recording) extends Signal[A] with VarTrait[A] with RecordForPlayback[A] {
+class Variable[A](var init: A)(implicit recording: Recording) extends Signal[A] with VarTrait[A, TrackDependency] with RecordForPlayback[A] {
   override protected def recalculate(recursively: Option[TriggerUpdate]): A = init
 
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {}
 
   override def update(newVal: A): Unit = {
     val last = init
@@ -343,7 +441,7 @@ class Variable[A](var init: A)(implicit recording: Recording) extends Signal[A] 
 
 //TODO: record for playback only when subscribe/update
 class ReassignableVariable[A](var init2: Signal[_ <: A])(implicit recording: Recording)
-  extends Signal[A] with ReassignableVarTrait[A, ({type L[A] = Signal[_ <: A]})#L]
+  extends Signal[A] with ReassignableVarTrait[A, ({type L[A] = Signal[_ <: A]})#L, TrackDependency]
   with RecordForPlayback[Signal[_ <: A]] {
   override def update(newValue: A): Unit = subscribe(new ConstSignal(newValue))
 
@@ -352,13 +450,15 @@ class ReassignableVariable[A](var init2: Signal[_ <: A])(implicit recording: Rec
     init2 = s
 
     if (!isOrphan) {
-      replaceParents(None, init2)
+      //TODO: decide if this should be merged to one TriggerUpdate call
+      TriggerUpdate.doCreatePrimitive(replaceParents(_, init2))
       TriggerUpdate.doUpdate(record(oldInit2, init2, _), this)
     }
   }
 
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {
     addParent(init2, currentTrigger)
+    currentTrigger.insert(this)
   }
 
   override protected def recalculate(recusively: Option[TriggerUpdate]): A =
@@ -369,17 +469,113 @@ class ReassignableVariable[A](var init2: Signal[_ <: A])(implicit recording: Rec
   override def playback(x: Signal[_ <: A], strategy: TriggerUpdate): Unit = {
     init2 = x
     if (!isOrphan) {
-      replaceParents(None, init2)
+      // FIXME: uncomment next line (?)
+      // replaceParents(None, init2)
     }
     updateValueTo(init2.now, strategy)
   }
 }
 
-class ObservableCancel(obs: Observable) extends Cancelable {
-  override def kill(): Unit = obs.kill()
+class DynamicSignal[A](formula: TrackDependency => A) extends Signal[A] {
+  self =>
+  private object DynamicSignalException extends SelfRxException(s"internal Dynamic exception $self")
 
-  override def addAnnotation(annotation: Annotation): Unit = obs.tag(annotation)
-  override def allAnnotations: Seq[Annotation] = obs.allAnnotations
+  private[this] var firstParent: Option[Signal[_]] = None
+
+  override def becomeOrphan(): Unit = {
+    super.becomeOrphan()
+    firstParent = None
+  }
+
+  override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
+    var allDependends: Seq[Primitive] = Seq.empty
+    var stillExact: Boolean = true
+    val td = new TrackDependency {
+      override def get[A](s: Signal[A]): A = {
+        allDependends +:= s
+        if (s.level >= level) {
+          stillExact = false
+        }
+        s.nowEstimate(strategy).getOrElse(throw DynamicSignalException)
+      }
+
+      override def breakLoop(): Unit = {
+        if (stillExact)
+          throw DynamicSignalException
+      }
+    }
+    val result: Option[A] =
+      try {
+        Some(formula(td))
+      } catch {
+        case x: Throwable =>
+          if (stillExact) {
+            throw x
+          } else {
+            None
+          }
+      }
+    replaceParents(strategy, allDependends: _*)
+    if (level == strategy.currentLevel) {
+      updateValueTo(result.getOrElse(throw new SelfRxException("internal error")), strategy)
+    }
+    else {
+      strategy.insert(this)
+    }
+  }
+
+  override protected def incrementLevelOrRemoveParent(increment: () => Unit, parent: Primitive, strategy: TriggerUpdate): Unit = {
+    if (firstParent.contains(parent)) {
+      increment()
+    } else {
+      // remove parents to be on the safe side of not introducing a circular dependency,
+      // but increment level nonetheless to avoid too many recalculations
+      increment()
+      replaceParents(strategy, firstParent.toList: _*)
+    }
+  }
+
+  override protected def recalculate(recusively: Option[TriggerUpdate]): A = {
+    require(recusively.isEmpty, "recalculateRecursively shouldn't call this")
+    formula(TrackDependencyNow)
+  }
+
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {
+    firstParent = None
+    val td = new TrackDependency {
+      override def get[A](s: Signal[A]): A = {
+        addParent(s, currentTrigger)
+        if (firstParent.isEmpty) firstParent = Some(s)
+        s.nowEstimate(currentTrigger).getOrElse(throw DynamicSignalException)
+      }
+      override def breakLoop(): Unit = throw DynamicSignalException
+    }
+    try {
+      formula(td)
+    }
+    catch {
+      case _: Throwable => ()
+    }
+    currentTrigger.insert(this)
+  }
+
+  override protected[this] def estimate(strategy: TriggerUpdate): Estimate[A] = {
+    try {
+      val result = formula {
+        new TrackDependency {
+          override def breakLoop(): Unit = throw DynamicSignalException
+
+          override def get[A](s: Signal[A]): A =
+            s.nowEstimate(strategy).getOrElse(throw DynamicSignalException)
+        }
+      }
+      Estimate.Approximately(result)
+    }
+    catch {
+      case _: Throwable =>
+        Estimate.None
+    }
+  }
 }
 
 class MappedSignal[A, B](s: Signal[_ <: A], f: A => B) extends Signal[B] {
@@ -387,8 +583,9 @@ class MappedSignal[A, B](s: Signal[_ <: A], f: A => B) extends Signal[B] {
     f(s.now)
   }
 
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {
     addParent(s, currentTrigger)
+    currentTrigger.insert(this)
   }
 }
 
@@ -397,38 +594,44 @@ class ProductSignal[A, B](a: Signal[_ <: A], b: Signal[_ <: B]) extends Signal[(
     (a.now, b.now)
   }
 
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {
     addParent(a, currentTrigger)
     addParent(b, currentTrigger)
+    currentTrigger.insert(this)
   }
 }
 
 class ConstSignal[A](value: A) extends Signal[A] {
   override protected def recalculate(recusively: Option[TriggerUpdate]): A = value
 
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {}
 }
 
-class BindSignal[A](a: Signal[_ <: Signal[_ <: A]]) extends Signal[A] {
+class BindSignal[A](a: Signal[_ <: Signal[_ <: A]]) extends Signal[A] with RecalculateNow[A] {
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
     val newSignal = a.now
-    if (hasParent(newSignal)) {
+    replaceParents(strategy, a, newSignal)
+    if (strategy.currentLevel == level) {
       updateValueTo(newSignal.now, strategy)
     }
-    else {
-      replaceParents(Some(strategy), a, newSignal)
-    }
   }
 
-  override protected def recalculate(recursively: Option[TriggerUpdate]): A = {
-    // we overwrite recalculateRecursively, so this should only be called by None
-    assert(recursively.isEmpty)
-    a.now.now
-  }
+  override protected[this] def calculateNow: A = a.now.now
 
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {
     addParent(a, currentTrigger)
-    addParent(a.now, currentTrigger)
+    a.nowEstimate(currentTrigger).foreach {
+      addParent(_, currentTrigger)
+    }
+    currentTrigger.insert(this)
+  }
+
+  override protected[this] def incrementLevelOrRemoveParent(incrementLevel: () => Unit, parent: Primitive, strategy: TriggerUpdate): Unit = {
+    if (parent == a) {
+      incrementLevel()
+    } else {
+      replaceParents(strategy, a)
+    }
   }
 }
 
@@ -440,8 +643,7 @@ trait Event[A] extends Primitive with EventTrait[A] {
   }
 
   override def observe(f: (A) => Unit): Cancelable = {
-    val obs = new ObservableEvent(this, f)
-    new ObservableCancel(obs)
+    new ObservableEvent(this, f)
   }
 
   override def evaluateDuringPlayback(): Boolean = false
@@ -459,17 +661,20 @@ class EventSource[A](implicit recording: Recording) extends Event[A] with EventS
     recalculateChildren(strategy)
   }
 
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {}
 }
 
 class MappedEvent[A, B](a: Event[_ <: A], f: A => B) extends Event[B] {
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {
     addParent(a, currentTrigger)
+    currentTrigger.insert(this)
   }
 
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
-    strategy.addEvent(this, f(strategy.getEvent(a).getOrElse { throw new SelfRxException("recalculate without event")}))
-    recalculateChildren(strategy)
+    strategy.getEvent(a).foreach { ev =>
+      strategy.addEvent(this, f(ev))
+      recalculateChildren(strategy)
+    }
   }
 }
 
@@ -481,7 +686,7 @@ class FutureEvent[A](f: Future[A])(implicit ec: ExecutionContext, recording: Rec
     }
   }
 
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {}
 
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
     recalculateChildren(strategy)
@@ -489,9 +694,10 @@ class FutureEvent[A](f: Future[A])(implicit ec: ExecutionContext, recording: Rec
 }
 
 class MergeEvent[A](e1: Event[_ <: A], e2: Event[_ <: A]) extends Event[A] {
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {
     addParent(e1, currentTrigger)
     addParent(e2, currentTrigger)
+    currentTrigger.insert(this)
   }
 
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
@@ -500,7 +706,7 @@ class MergeEvent[A](e1: Event[_ <: A], e2: Event[_ <: A]) extends Event[A] {
     val e: A = (o1, o2) match {
       case (Some(x), _) => x
       case (None, Some(y)) => y
-      case (None, None) => throw new SelfRxException("recalculate without event in merge")
+      case (None, None) => return
     }
     strategy.addEvent(this, e)
     recalculateChildren(strategy)
@@ -508,23 +714,26 @@ class MergeEvent[A](e1: Event[_ <: A], e2: Event[_ <: A]) extends Event[A] {
 }
 
 class FilterEvent[A](e: Event[A], filter: A => Boolean) extends Event[A] {
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {
     addParent(e, currentTrigger)
+    currentTrigger.insert(this)
   }
 
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
-    val o = strategy.getEvent(e).getOrElse(throw new SelfRxException("recalculate witjout event in filter"))
-    if (filter(o)) {
-      strategy.addEvent(this, o)
-      recalculateChildren(strategy)
+    strategy.getEvent(e).foreach { o =>
+      if (filter(o)) {
+        strategy.addEvent(this, o)
+        recalculateChildren(strategy)
+      }
     }
   }
 }
 
 class TriggerWhenEvent[A, B, C](e: Event[A], s: Signal[B], f: (A, B) => C) extends Event[C] {
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {
     addParent(e, currentTrigger)
     addParent(s, currentTrigger)
+    currentTrigger.insert(this)
   }
 
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
@@ -536,7 +745,7 @@ class TriggerWhenEvent[A, B, C](e: Event[A], s: Signal[B], f: (A, B) => C) exten
 }
 
 object Never extends Event[Nothing] {
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {}
 
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {}
 }
@@ -549,7 +758,9 @@ class SignalFromEvent[A](a: Event[_ <: A], init: A) extends Signal[A] with Recor
   //even if it isn't listened to currently
   override def becomeOrphan(): Unit = {}
 
-  addParent(a, None)
+  TriggerUpdate.doCreatePrimitive {
+    addParent(a, _)
+  }(NoRecording)
 
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
     val newValue = recalculate(Some(strategy))
@@ -567,17 +778,19 @@ class SignalFromEvent[A](a: Event[_ <: A], init: A) extends Signal[A] with Recor
     }
   }
 
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {}
 
   override def playback(x: A, strategy: TriggerUpdate): Unit = {
     updateValueTo(x, strategy)
   }
 }
 
-class FoldSignal[A, B](a: Event[_ <: A], init: B, fun: (A, B) => B) extends Signal[B] with RecordForPlayback[B] {
+class FoldSignal[A, B](a: Event[_ <: A], init: B, fun: (A, B) => B)(implicit recording: Recording) extends Signal[B] with RecordForPlayback[B] {
   override def becomeOrphan(): Unit = {}
 
-  addParent(a, None)
+  TriggerUpdate.doCreatePrimitive {
+    addParent(a, _)
+  }
 
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
     val ev = strategy.getEvent(a).getOrElse(throw new SelfRxException("event is not triggered, but it should have been (FoldSignal)"))
@@ -594,13 +807,20 @@ class FoldSignal[A, B](a: Event[_ <: A], init: B, fun: (A, B) => B) extends Sign
   override def playback(x: B, strategy: TriggerUpdate): Unit =
     updateValueTo(x, strategy)
 
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {}
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {}
 }
 
 class EventFromSignal[A](s: Signal[_ <: A]) extends Event[A] {
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
-    addParent(s, currentTrigger)
-  }
+  // you would think that this only needs to track its signal when its used
+  // but the problem is that the signal forgets if it was changed immediately
+  // after it changed,
+  // so when this event only comes to life later (but in the same turn)
+  // we may not be able to know if we should immediately trigger
+  // QUESTION: is it even possible that an event comes to live in this condition?
+  // (haven't been able to construct a test case)
+  TriggerUpdate.doCreatePrimitive(addParent(s, _))(NoRecording)
+
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {}
 
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
     strategy.addEvent(this, s.now)
@@ -609,9 +829,10 @@ class EventFromSignal[A](s: Signal[_ <: A]) extends Event[A] {
 }
 
 class EventInsideSignal[A](s: Signal[Event[_ <: A]]) extends Event[A] {
-  override def getFirstChild(currentTrigger: Option[TriggerUpdate]): Unit = {
+  override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {
     addParent(s, currentTrigger)
     addParent(s.now, currentTrigger)
+    currentTrigger.insert(this)
   }
 
   override def recalculateRecursively(strategy: TriggerUpdate): Unit = {
@@ -624,7 +845,7 @@ class EventInsideSignal[A](s: Signal[Event[_ <: A]]) extends Event[A] {
       }
     }
     else {
-      replaceParents(Some(strategy), s, newEvent)
+      replaceParents(strategy, s, newEvent)
     }
   }
 }
@@ -736,13 +957,23 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
       new ProductSignal[A, B](fa, fb)
   }
 
-  override object Signal extends SignalCompanionObject[Signal] {
+  override object Signal extends SignalCompanionObject[Signal, TrackDependency] {
     override def Const[A](value: A): selfrx.Signal[A] = new ConstSignal(value)
+
+    def apply[A](fun: TrackDependency => A): Signal[A] = {
+      new DynamicSignal[A](fun)
+    }
+
+    def breakPotentiallyLongComputation()(implicit td: TrackDependency): Unit = {
+      td.breakLoop()
+    }
   }
 
   object Event extends EventCompanionObject[Event] {
     override def Never: selfrx.Event[Nothing] = selfrx.Never
   }
+
+  override type TrackDependency = reactive.selfrx.TrackDependency
 }
 
 final class ReactiveObject extends react.ReactiveObject {

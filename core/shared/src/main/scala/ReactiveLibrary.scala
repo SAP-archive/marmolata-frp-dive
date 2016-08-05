@@ -16,12 +16,16 @@ object ReactiveLibrary {
     def apply[A](init: A): Var[A]
   }
 
-  trait SignalCompanionObject[Signal[_]] {
+  trait SignalCompanionObject[Signal[_], TrackDependency] {
     /**
      * returns a constant signal that never changes its initial value
      * this is the same as cats.Applicative#pure
      */
     def Const[A](value: A): Signal[A]
+
+    def apply[A](fun: TrackDependency => A): Signal[A]
+
+    def breakPotentiallyLongComputation()(implicit td: TrackDependency): Unit
   }
 
   trait EventSourceCompanionObject[Event[_], EventSource[_]] {
@@ -78,7 +82,7 @@ object ReactiveLibrary {
     def observe(f: A => Unit): Cancelable
   }
 
-  trait SignalTrait[+A] extends Observable[A] with Annotateable {
+  trait SignalTrait[+A, TrackDependency] extends Observable[A] with Annotateable {
     /**
       * returns the current value of this Signal.
       * It's generally better to use composition methods like Functor#map, Cartesian#product
@@ -87,6 +91,8 @@ object ReactiveLibrary {
       * of a signal could be in an inconsistent state
      */
     def now: A
+
+    def apply()(implicit trackDependency: TrackDependency): A
 
     @deprecated("use now instead", "0.32")
     final def get: A = now
@@ -97,7 +103,7 @@ object ReactiveLibrary {
   trait EventOperationsTrait[F[+_]] extends Functor[F] with Filterable[F] with Mergeable[F]
   trait SignalOperationsTrait[F[+_]] extends Applicative[F]
 
-  trait VarTrait[A] extends SignalTrait[A] {
+  trait VarTrait[A, TrackDependency] extends SignalTrait[A, TrackDependency] {
     /**
       * update the value of this Var. This potentially triggers
       * value changes of dependent variables and events
@@ -113,13 +119,13 @@ object ReactiveLibrary {
     final def := (newValue: A): Unit = update(newValue)
   }
 
-  trait ReassignableVarTrait[A, Signal[_]] extends VarTrait[A] {
+  trait ReassignableVarTrait[A, Signal[_], TrackDependency] extends VarTrait[A, TrackDependency] {
     def subscribe(s: Signal[A]): Unit
     def toSignal: Signal[A]
   }
 
   // added <: SignalTrait here to avoid that apply methods don't differ after type erasure
-  trait ReassignableVarCompanionObject[ReassignableVar[_], Signal[_] <: SignalTrait[_]] {
+  trait ReassignableVarCompanionObject[ReassignableVar[_], Signal[_] <: SignalTrait[_, _]] {
     def apply[A](init: A): ReassignableVar[A]
     def apply[A](init: Signal[A]): ReassignableVar[A]
   }
@@ -149,6 +155,8 @@ object ReactiveLibrary {
     override def parent: Option[Annotation] = None
     override def description: String = "internal"
   }
+
+  trait TrackDependencyTrait
 }
 
 import ReactiveLibrary._
@@ -167,13 +175,14 @@ trait ReactiveLibrary {
   /**
     * a time varying value and the other most important type of this library besides [[Event]]
     */
-  type Signal[+A] <: SignalTrait[A] with VolatileHelper
+  type Signal[+A] <: SignalTrait[A, TrackDependency] with VolatileHelper
 
   /** a time varying value that can be changed (and is generally only changed)
     * when it's [[ReactiveLibrary.VarTrait#update]] method is called
     */
-  type Var[A] <: Signal[A] with VarTrait[A]
+  type Var[A] <: Signal[A] with VarTrait[A, TrackDependency]
   type EventSource[A] <: Event[A] with EventSourceTrait[A]
+  type TrackDependency <: TrackDependencyTrait
 
   implicit val eventApplicative: EventOperationsTrait[Event]
   implicit val signalApplicative: SignalOperationsTrait[Signal]
@@ -189,10 +198,10 @@ trait ReactiveLibrary {
   val Var: VarCompanionObject[Var]
   val EventSource: EventSourceCompanionObject[Event, EventSource]
 
-  val Signal: SignalCompanionObject[Signal]
+  val Signal: SignalCompanionObject[Signal, TrackDependency]
   val Event: EventCompanionObject[Event]
 
-  type ReassignableVar[A] <: ReassignableVarTrait[A, Signal]
+  type ReassignableVar[A] <: ReassignableVarTrait[A, Signal, TrackDependency]
   val ReassignableVar: ReassignableVarCompanionObject[ReassignableVar, Signal]
 
   protected[react] def toSignal[A] (init: A, event: Event[A]): Signal[A]

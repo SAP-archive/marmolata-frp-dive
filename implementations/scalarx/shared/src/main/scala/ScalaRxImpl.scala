@@ -6,6 +6,7 @@ import react.ReactiveLibrary._
 import react.impls.helper.NonCancelable
 import react.impls.helper.ReactiveLibraryImplementationHelper
 import react.impls.helper._
+import rx.Ctx.Data
 import rx._
 import rx.async.FutureCombinators
 
@@ -39,7 +40,9 @@ case class CompareUnequal[+A](get: A) {
   def map[B](f: A => B): CompareUnequal[B] = CompareUnequal(f(get))
 }
 
-trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultReassignableVar with DefaultEventObject with ReactiveLibraryImplementationHelper {
+trait ScalaRxImpl extends ReactiveLibrary
+  with DefaultReassignableVar with DefaultEventObject
+  with ReactiveLibraryImplementationHelper {
   scalaRxImpl =>
   def implementationName: String = "Scala.Rx wrapper"
 
@@ -58,6 +61,19 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultR
     val result = new ObsWrapper(obs, ReferenceHolder)
     ReferenceHolder.references += result
     result
+  }
+
+  case class TrackDependency private[ScalaRxImpl](u: Ctx.Data) extends TrackDependencyTrait
+
+  override object Signal extends SignalCompanionObject[Signal, TrackDependency] {
+    override def Const[A](value: A): Signal[A] =
+      new Signal(Rx { value })
+
+    override def apply[A](fun: (TrackDependency) => A): Signal[A] = {
+      new Signal(Rx.build((owner, data) => fun(TrackDependency(data))))
+    }
+
+    override def breakPotentiallyLongComputation()(implicit td: TrackDependency): Unit = {}
   }
 
   class Event[+A](private[ScalaRxImpl] val wrapped: Rx[Option[CompareUnequal[A]]]) extends EventTrait[A] {
@@ -154,7 +170,7 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultR
     }
   }
 
-  class Signal[+A](private[ScalaRxImpl] val wrapped: Rx[A]) extends SignalTrait[A] {
+  class Signal[+A](private[ScalaRxImpl] val wrapped: Rx[A]) extends SignalTrait[A, TrackDependency] {
     type F[+A] = Signal[A]
 
     override def now: A = wrapped.now
@@ -162,6 +178,8 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultR
     override def observe(f: (A) => Unit): Cancelable = {
       obsToObsWrapper(wrapped.trigger { f(wrapped.now) })
     }
+
+    override def apply()(implicit trackDependency: TrackDependency): A = wrapped()(trackDependency.u)
   }
 
   implicit object signalApplicative extends SignalOperationsTrait[Signal] with Monad[Signal] {
@@ -227,7 +245,7 @@ trait ScalaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultR
     new Event(f.map(x => Some(CompareUnequal(x)): Option[CompareUnequal[A]])(ec).toRx(None)(ec, implicitly[Ctx.Owner]))
   }
 
-  class Var[A](private val _wrapped: rx.Var[A]) extends Signal[A](_wrapped) with VarTrait[A] {
+  class Var[A](private val _wrapped: rx.Var[A]) extends Signal[A](_wrapped) with VarTrait[A, TrackDependency] {
     def update(newValue: A): Unit = _wrapped.update(newValue)
   }
 

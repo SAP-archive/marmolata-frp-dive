@@ -29,7 +29,7 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
 
   type Event[+A] = EventSourceImpl[A, _ <: A]
 
-  class SignalImpl[+A, D <: A](private[MetaRxImpl] val wrapped: ReadStateChannel[D]) extends SignalTrait[A] {
+  class SignalImpl[+A, D <: A](private[MetaRxImpl] val wrapped: ReadStateChannel[D]) extends SignalTrait[A, TrackDependency] {
     type F[+B] = SignalImpl[B, _ <: B]
 
     def now: A = wrapped.get
@@ -37,6 +37,9 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
     def observe(f: A => Unit): Cancelable = {
       Cancelable(wrapped.attach(f))
     }
+
+    override def apply()(implicit trackDependency: TrackDependency): A =
+      throw new UnsupportedOperationException("Signal.apply is not supported by MetaRxImpl")
   }
 
   type Signal[+A] = SignalImpl[A, _ <: A]
@@ -103,7 +106,7 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
     }
   }
 
-  class Var[A](private val _wrapped: metarx.Var[A]) extends SignalImpl[A, A](_wrapped.distinct.cache(_wrapped.get)) with VarTrait[A] {
+  class Var[A](private val _wrapped: metarx.Var[A]) extends SignalImpl[A, A](_wrapped.distinct.cache(_wrapped.get)) with VarTrait[A, TrackDependency] {
     override def update(newValue: A): Unit = {
       _wrapped := newValue
     }

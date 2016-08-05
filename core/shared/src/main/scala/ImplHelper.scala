@@ -15,8 +15,14 @@ object NonCancelable extends Cancelable {
 trait DefaultSignalObject {
   self: ReactiveLibrary =>
 
-  final object Signal extends SignalCompanionObject[Signal] {
+  final object Signal extends SignalCompanionObject[Signal, TrackDependency] {
     override def Const[A](value: A): Signal[A] = Var(value)
+
+    override def apply[A](fun: (TrackDependency) => A): Signal[A] =
+      throw new UnsupportedOperationException(s"library ${self.implementationName} doesn't support Signal.apply")
+
+    override def breakPotentiallyLongComputation()(implicit td: TrackDependency): Unit =
+      throw new UnsupportedOperationException()
   }
 }
 
@@ -30,7 +36,7 @@ trait DefaultEventObject {
 
 trait DefaultReassignableVar {
   self: ReactiveLibrary =>
-  class ReassignableVar[A] private (constr: Var[Signal[A]]) extends ReassignableVarTrait[A, Signal] {
+  class ReassignableVar[A] private (constr: Var[Signal[A]]) extends ReassignableVarTrait[A, Signal, TrackDependency] {
 
     private lazy val self: Signal[A] = unsafeImplicits.signalApplicative.flatten(constr)
 
@@ -43,6 +49,8 @@ trait DefaultReassignableVar {
     override def subscribe(s: Signal[A]): Unit = constr update s
 
     override def toSignal: Signal[A] = self
+
+    override def apply()(implicit trackDependency: TrackDependency): A = self()
   }
 
   override object ReassignableVar extends ReassignableVarCompanionObject[ReassignableVar, Signal] {

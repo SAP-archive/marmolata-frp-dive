@@ -50,6 +50,8 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
     u
   }
 
+  override type TrackDependency = underlying.TrackDependency
+
   class WrappedCancelable(val u: Cancelable) extends Cancelable with HasUnderlying[Cancelable] {
     override def kill(): Unit = u.kill()
 
@@ -59,18 +61,21 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
     override def allAnnotations: Seq[Annotation] = u.allAnnotations
   }
 
-  class Signal[+A](private[DebugLayer] val u: underlying.Signal[A]) extends SignalTrait[A] with HasUnderlying[SignalTrait[A]] {
+  class Signal[+A](private[DebugLayer] val u: underlying.Signal[A]) extends SignalTrait[A, TrackDependency] with HasUnderlying[SignalTrait[A, TrackDependency]] {
     override def now: A = u.now
 
     override def observe(f: (A) => Unit): Cancelable = newSignalObservable(this, f)
 
-    override def under: SignalTrait[A] = u
+    override def under: SignalTrait[A, TrackDependency] = u
+
+    override def apply()(implicit trackDependency: underlying.TrackDependency): A = u()
 
     override def addAnnotation(annotation: Annotation): Unit = u.addAnnotation(annotation)
+
     override def allAnnotations: Seq[Annotation] = u.allAnnotations
   }
 
-  class Var[A](u: underlying.Var[A]) extends Signal[A](u) with VarTrait[A] {
+  class Var[A](u: underlying.Var[A]) extends Signal[A](u) with VarTrait[A, TrackDependency] {
     override def update(newValue: A): Unit = u.update(newValue)
   }
 
@@ -88,7 +93,7 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
   }
 
   class ReassignableVar[A](private[DebugLayer] val u: underlying.ReassignableVar[A])
-    extends ReassignableVarTrait[A, Signal] with HasUnderlying[VarTrait[A]] {
+    extends ReassignableVarTrait[A, Signal, TrackDependency] with HasUnderlying[VarTrait[A, TrackDependency]] {
     override def update(newValue: A): Unit = u.update(newValue)
 
     override def now: A = u.now
@@ -99,7 +104,9 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
 
     override lazy val toSignal: Signal[A] = new Signal(u.toSignal)
 
-    override def under: VarTrait[A] = u
+    override def under: VarTrait[A, TrackDependency] = u
+
+    override def apply()(implicit trackDependency: underlying.TrackDependency): A = u()
 
     override def addAnnotation(annotation: Annotation): Unit = u.addAnnotation(annotation)
     override def allAnnotations: Seq[Annotation] = u.allAnnotations
@@ -137,9 +144,17 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
       newReassignableVar(underlying.ReassignableVar(init.u))
   }
 
-  override object Signal extends SignalCompanionObject[Signal] {
+  override object Signal extends SignalCompanionObject[Signal, TrackDependency] {
     override def Const[A](value: A): Signal[A] =
       newSignal(underlying.Signal.Const(value))
+
+    override def apply[A](fun: (TrackDependency) => A): Signal[A] = {
+      newSignal(underlying.Signal(fun))
+    }
+
+    override def breakPotentiallyLongComputation()(implicit td: underlying.TrackDependency): Unit = {
+      underlying.Signal.breakPotentiallyLongComputation()(td)
+    }
   }
 
   override object Event extends EventCompanionObject[Event] {

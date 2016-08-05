@@ -2,7 +2,7 @@ package react.LibTests
 
 import algebra.Eq
 import org.scalacheck.{Test, Gen, Arbitrary}
-import org.scalatest.{Succeeded, FlatSpec, Matchers}
+import org.scalatest.{Tag, Succeeded, FlatSpec, Matchers}
 import react.ReactiveDeclaration
 import react.ReactiveLibrary.{Annotation, Cancelable, Observable}
 import scala.concurrent.{ExecutionContext, Promise, Future}
@@ -66,6 +66,14 @@ trait CollectValues[A] extends mutable.Seq[A] {
   var ref: Cancelable
 }
 
+case class TestConfiguration(lazyMap: Boolean, forwardExceptions: Boolean)
+
+object TestConfiguration {
+  def all: TestConfiguration = TestConfiguration(true, true)
+}
+
+object DeprecatedTest extends Tag("react.deprecated")
+
 trait ReactLibraryTests {
   self: FlatSpec with Matchers =>
 
@@ -93,11 +101,13 @@ trait ReactLibraryTests {
   }
 
 
-  def runLibraryTests: Unit = {
+  def runLibraryTests(testConfiguration: TestConfiguration): Unit = {
     import reactLibrary._
     import reactLibrary.syntax._
 
     behavior of s"ReactiveLibrary ${implementationName}"
+
+    // BASIC TESTS
 
     it should "not trigger this strange flatMap bug ;;;;" in {
       implicit val queue = new SimpleExecutionContext()
@@ -361,29 +371,32 @@ trait ReactLibraryTests {
       s shouldEqual false
     }
 
-    it should "allow exceptions" in {
-      val v = Var(0)
-      val w = v.map { x => throw new Exception("Hi") }
-      v.update(7)
-      intercept[Exception] {
-        w.now
-      }
-      Succeeded
-    }
+    if (testConfiguration.forwardExceptions) {
 
-    // would be nice to have!
-    ignore should "allow exceptions 2" in {
-      val v = Var(0)
-      val w = v.map { x => if (x == 7) throw new Exception("Hi") }
-
-      try {
-        w.observe(_ => Unit)
-      }
-      catch {
-        case _: Exception =>
+      it should "allow exceptions" in {
+        val v = Var(0)
+        val w = v.map { x => throw new Exception("Hi") }
+        v.update(7)
+        intercept[Exception] {
+          w.now
+        }
+        Succeeded
       }
 
-      v := 7
+      // would be nice to have!
+      it should "allow exceptions 2" in {
+        val v = Var(0)
+        val w = v.map { x => if (x == 7) throw new Exception("Hi") }
+
+        try {
+          w.observe(_ => Unit)
+        }
+        catch {
+          case _: Exception =>
+        }
+
+        v := 7
+      }
     }
 
     it should "compute map lazily" in {
@@ -448,7 +461,7 @@ trait ReactLibraryTests {
       l2 shouldBe List.empty
     }
 
-    it should "not remember its value as an event (1)" in {
+    it should "not remember its value as an event (1)" taggedAs(DeprecatedTest) in {
       import unsafeImplicits._
       val v = Var(7)
       val w = Var(8)
@@ -749,6 +762,50 @@ trait ReactLibraryTests {
       v.containsTag(Tag2) shouldBe true
       v.allAnnotations.should(contain).theSameElementsAs(Seq(Tag2))
     }
+
+    it should "support Signal { ... } syntax (1)" in {
+      val v = Var(0)
+      val w = Signal { implicit s => v() + v() }
+      val l = collectValues(w)
+
+      v := 3
+      v := 10
+      v := 7
+
+      l shouldBe List(0, 6, 20, 14)
+    }
+
+    it should "support Signal { ... } syntax (2)" in {
+      val v = Var(false)
+      val w = Var(7)
+      val q = Var(10)
+
+      val l = collectValues(Signal { implicit i => if (v()) w() else q() })
+
+      v := true
+      w := 10
+      q := 20
+      v := false
+      w := 30
+
+      l shouldBe List(10, 7, 10, 20)
+    }
+
+    it should "support map inside Signal { ... } " in {
+      var recalculateCount = 0
+      def recalc(): Unit = {
+        recalculateCount += 1
+        if (recalculateCount == 100) {
+          fail("recalculated too often")
+        }
+      }
+      val v = Var(0)
+      val r = Signal { implicit i => v.map(_ + 1)() + 1 }
+      val l = collectValues(r)
+
+      v := 3
+      l shouldBe List(2, 5)
+    }
   }
 
   def runPropertyTests: Unit = {
@@ -898,7 +955,7 @@ trait ReactLibraryTests {
     behavior of "Event"
     FlatMapTests[Event](unsafeImplicits.eventApplicative).flatMap[Int, Int, Int].all.properties.foreach {
       case (name, property) =>
-        it should name in {
+        it should name taggedAs(DeprecatedTest) in {
           val test = Test.check(property) {
             _.withMinSuccessfulTests(100)
           }
