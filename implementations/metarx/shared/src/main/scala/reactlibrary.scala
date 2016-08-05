@@ -1,11 +1,11 @@
 import react.impls.MetaRxImpl
-import react.{ReactiveLibraryUsage, ReactiveLibrary}
+import react.{ReactiveDeclaration, ReactiveLibrary}
 
 package object reactive {
   private object
 
 
-  Impl extends MetaRxImpl with ReactiveLibraryUsage
+  Impl extends MetaRxImpl with ReactiveDeclaration
 
-  val library: ReactiveLibrary with ReactiveLibraryUsage = Impl
+  val library: ReactiveDeclaration = Impl
 }
