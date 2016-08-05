@@ -15,7 +15,7 @@ trait ReactiveObject {
   val library: ReactiveDeclaration
 }
 
-trait ReactiveLibraryUsage {
+trait ReactiveLibraryUsage extends ReactiveLibraryUsageTime {
   self: ReactiveLibrary =>
 
   implicit final class FutureExtensions[A](f: Future[A]) {
