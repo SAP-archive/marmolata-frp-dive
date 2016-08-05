@@ -173,6 +173,10 @@ trait ReactiveLibraryUsage {
     implicit def eventSourceIsFilterable[A](e: EventSource[A]): FilterableObs[Event, A] = new FilterableObs(e)
     implicit def reassignableEventIsMergeable[A](e: ReassignableEvent[A]): MergeableObs[Event, A] = new MergeableObs(e)
     implicit def reassignableEventIsFilterable[A](e: ReassignableEvent[A]): FilterableObs[Event, A] = new FilterableObs(e)
+
+    // this is only to make IntelliJ happy:
+    implicit def varIsSignal[A](v: Var[A]): Signal[A] = v
+    implicit def eventSourceIsEvent[A](e: EventSource[A]): Event[A] = e
   }
 
   object syntax extends Syntax
