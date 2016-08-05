@@ -40,7 +40,7 @@ build:
     commands:
       - export BASE=/var/www/coverage/${CI_REPO##*/}
       - ssh core@mo-4249591b5.mo.sap.corp mkdir -p "${BASE}/${CI_BUILD_NUMBER}" "${BASE}/latest"
-      - rsync -aqSD --ignore-errors --force --delete jvm/target/scala-2.11/scoverage-report/ core@mo-4249591b5.mo.sap.corp:"${BASE}/${CI_BUILD_NUMBER}"
+      - rsync -aqSD --ignore-errors --force --delete target/scala-2.10/scoverage-report/ core@mo-4249591b5.mo.sap.corp:"${BASE}/${CI_BUILD_NUMBER}"
       - ssh core@mo-4249591b5.mo.sap.corp "rsync -aqSD --ignore-errors --force --delete ${BASE}/\`ls $BASE | sort -rn | head -n 1\`/ ${BASE}/latest"
   publish_test:
     image: marmolata/scala-build
