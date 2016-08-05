@@ -62,13 +62,16 @@ class SimpleExecutionContext extends ExecutionContext {
     }
   }
 }
+trait CollectValues[A] extends mutable.Seq[A] {
+  var ref: Cancelable
+}
 
 trait ReactLibraryTests {
   self: FlatSpec with Matchers =>
 
-  def collectValues[A](x: Observable[A]): mutable.Seq[A] = {
-    val result = new mutable.MutableList[A]()
-    val obs = x.observe { (v: A) => result += v }
+  def collectValues[A](x: Observable[A]): CollectValues[A] = {
+    val result = new mutable.MutableList[A]() with CollectValues[A] { var ref: Cancelable = null }
+    result.ref = x.observe { (v: A) => result += v }
     result
   }
 
@@ -93,7 +96,6 @@ trait ReactLibraryTests {
   def runLibraryTests: Unit = {
     import reactLibrary._
     import reactLibrary.syntax._
-    import ReactLibraryTests._
 
     behavior of s"ReactiveLibrary ${implementationName}"
 
@@ -703,7 +705,7 @@ trait ReactLibraryTests {
       val count = e.fold(0){ (x, y) => y + 1 }
       val l = collectValues(count)
 
-      1 to 10 foreach { e emit Unit }
+      1 to 10 foreach { _ => e emit Unit }
 
       l shouldBe List(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
     }
@@ -726,6 +728,7 @@ trait ReactLibraryTests {
       e emit 1
 
       val sum = e.fold(0)(_ + _)
+      val l = collectValues(sum)
       1 to 5 foreach { e emit _ }
 
       l shouldBe List(0, 1, 3, 6, 10, 15)
