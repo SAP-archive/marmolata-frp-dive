@@ -39,7 +39,8 @@ lazy val jsSettings = commonSettings ++ Seq(
 lazy val jvmSettings = commonSettings ++ Seq(
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0-M15" % "test",
   libraryDependencies += "org.typelevel" %% "cats" % "0.5.0",
-  libraryDependencies += "org.typelevel" %% "discipline" % "0.4"
+  libraryDependencies += "org.typelevel" %% "discipline" % "0.4",
+  testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-h", "target/test-reports")
 )
 
 lazy val root = (crossProject in file("core")).
