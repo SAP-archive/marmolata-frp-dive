@@ -96,6 +96,14 @@ object ReactiveLibrary {
 
     @deprecated("use now instead", "0.32")
     final def get: A = now
+
+    def observeWithOldValue(f: (Option[A], A) => Unit): Cancelable = {
+      var last: Option[A] = None
+      observe { x =>
+        f(last, x)
+        last = Some(x)
+      }
+    }
   }
 
   trait EventTrait[+A] extends Observable[A] with Annotateable
