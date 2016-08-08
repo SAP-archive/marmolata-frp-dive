@@ -1,5 +1,5 @@
 import react.core.ReactiveDeclaration
-import react.impls.MetaRxImpl
+import react.impls.metarx.MetaRxImpl
 
 package object reactive {
   private object
