@@ -196,6 +196,7 @@ trait ReactiveLibrary {
   implicit val signalApplicative: SignalOperationsTrait[Signal]
 
   trait UnsafeImplicits {
+    @deprecated("event is not a monad, not even close, not even applicative or apply", "0.1.92")
     implicit val eventApplicative: FlatMap[Event] with EventOperationsTrait[Event]
     implicit val signalApplicative: Monad[Signal] with SignalOperationsTrait[Signal]
   }
