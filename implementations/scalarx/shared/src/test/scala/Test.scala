@@ -1,8 +1,6 @@
 import org.scalatest.FlatSpec
-import react.core.ReactiveLibraryUsage
-import react.core.tests.TestImplementation
+import react.core.tests.DefaultTests
 
-class ScalaRxTest extends FlatSpec with TestImplementation {
-   def reactLibrary_ = reactive.library
-   override def shouldRunPropertyTests: Boolean = false
+class ScalaRxTest extends DefaultTests {
+   def reactiveLibrary_ = reactive.library
 }
