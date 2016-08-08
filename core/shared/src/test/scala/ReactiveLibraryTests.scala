@@ -8,6 +8,8 @@ import react.ReactiveLibrary.{Annotation, Cancelable, Observable}
 import scala.concurrent.{ExecutionContext, Promise, Future}
 import scala.ref.WeakReference
 import scala.collection.mutable
+import org.scalatest.time.SpanSugar._
+
 
 // TODO this is probably somewhere in the standard library
 // TODO I have no clue where the bug is that makes it necessary to execute recurisive calls directly
@@ -805,6 +807,50 @@ trait ReactLibraryTests {
 
       v := 3
       l shouldBe List(2, 5)
+    }
+
+    it should "not go into an endless loop when in inconsistent state" in {
+      val v1 = Var(0)
+      val v2 = v1.map(identity)
+      val v3 = v2.map(identity).map(identity).map(identity)
+      var fail = false
+      v3.observe { _ => {}}
+      val v = Signal { implicit i =>
+        if (v1() == 0) {
+          v2()
+        }
+        else {
+          val b = v3() != v2()
+          Signal.breakPotentiallyLongComputation()
+          if (b) {
+            val t = System.currentTimeMillis()
+            while(t + 2000 < System.currentTimeMillis()) {}
+            fail = true
+            103
+          }
+          else {
+            17
+          }
+        }
+      }
+      val l = collectValues(v)
+      v1 := 2
+      v1 := 3
+      l shouldBe Seq(0, 17)
+      fail shouldBe false
+    }
+
+    it should "not throw an exception from inconsistent state" in {
+      val v = Var(0)
+      val w = v.map(identity).map(identity)
+      w.observe { _ => {} }
+      val l = collectValues(Signal { implicit i =>
+        if (v() == 0) 13 else if (v() != w()) throw new Exception("I should have been catched") else 23
+      })
+
+      v := 1
+      
+      l shouldBe Seq(13, 23)
     }
   }
 

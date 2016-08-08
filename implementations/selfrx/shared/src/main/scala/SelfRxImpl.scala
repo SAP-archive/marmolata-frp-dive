@@ -500,7 +500,7 @@ class DynamicSignal[A](formula: TrackDependency => A) extends Signal[A] {
       }
 
       override def breakLoop(): Unit = {
-        if (stillExact)
+        if (!stillExact)
           throw DynamicSignalException
       }
     }
