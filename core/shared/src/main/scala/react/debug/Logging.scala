@@ -1,8 +1,9 @@
 package react.debug
 
 import cats._
-import react.ReactiveLibrary
-import react.ReactiveLibrary._
+import react.core.ReactiveLibrary
+import ReactiveLibrary._
+import react.core.ReactiveLibrary
 import react.impls.helper.ReactiveLibraryImplementationHelper
 
 import scala.concurrent.{ExecutionContext, Future}

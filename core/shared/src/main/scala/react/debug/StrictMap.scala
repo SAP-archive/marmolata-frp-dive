@@ -1,6 +1,7 @@
 package react.debug
 
-import react.ReactiveLibrary.{InternalAnnotation, Annotation}
+import react.core.ReactiveLibrary
+import ReactiveLibrary.{InternalAnnotation, Annotation}
 
 object InternalStrictMap extends Annotation {
   override def parent: Option[Annotation] = Some(InternalAnnotation)

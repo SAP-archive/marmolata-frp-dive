@@ -1,6 +1,6 @@
 package react.logged
 
-import react.ReactiveLibrary.Nameable
+import react.core.ReactiveLibrary.Nameable
 import react.debug.{HasUnderlying, DebugLayer}
 
 class AnnotateStack(underlying: react.ReactiveLibrary) extends DebugLayer(underlying) {

@@ -1,11 +1,13 @@
 import cats.Apply
 import org.scalajs.dom
 import org.scalajs.dom.Element
-import react.ReactiveLibrary.Annotation
+import react.core.ReactiveLibrary
+import ReactiveLibrary.Annotation
 import react.debug.{AnnotateStackAnnotation, AnnotateStack}
-import react.selfrx.debugger.updatelogger.{HasHistoryLogger, RecordingLogUpdates, LogSelfrxImpl}
-import react.selfrx.debugger.visualization.{NamedGraphNodeAnnotation, SourceMapConsumerForFile, ReactiveDebugger}
-import react.selfrx.debugger.{DebuggerSelfRxImpl, Debugger}
+import react.impls.selfrx.debugger.{Debugger, DebuggerSelfRxImpl}
+import react.impls.selfrx.debugger.updatelogger.{HasHistoryLogger, RecordingLogUpdates, LogSelfrxImpl}
+import react.impls.selfrx.debugger.visualization.{NamedGraphNodeAnnotation, SourceMapConsumerForFile, ReactiveDebugger}
+import react.impls.selfrx.debugger.Debugger
 
 import scala.scalajs.js.annotation.{JSName, JSExport}
 

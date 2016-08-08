@@ -4,9 +4,9 @@ import cats.{FlatMap, Monad}
 import org.scalacheck.Prop.Exception
 import pl.metastack.metarx
 import pl.metastack.metarx.{Cancelable => MetaCancelable, _}
+import react.core.ReactiveLibrary
 import react.impls.helper._
-import react.ReactiveLibrary
-import _root_.react.ReactiveLibrary._
+import ReactiveLibrary._
 
 import scala.concurrent.{ExecutionContext, Future}
 

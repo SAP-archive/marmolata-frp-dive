@@ -1,6 +1,8 @@
 package react.debug
 
-import react.ReactiveLibrary.{Annotation, Annotateable}
+import react.core.EnsureLargeEnoughStackTrace
+import react.core.ReactiveLibrary
+import ReactiveLibrary.{Annotation, Annotateable}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
