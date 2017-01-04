@@ -23,7 +23,7 @@ pipeline:
       - sbt -Dsbt.ivy.home=$IVY2 coverageAggregate
       - sbt -Dsbt.ivy.home=$IVY2 scalarxJS/test selfrxJS/test
   cloc:
-    image: marmolata-registry.mo.sap.corp/marmolata/drone-plugin-cloc
+    image: marmolata-registry.mo.sap.corp/marmolata/drone-plugin.cloc
   # publish_coverage:
   #   image: *image
   #   when:
