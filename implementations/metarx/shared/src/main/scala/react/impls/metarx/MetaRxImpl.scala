@@ -8,6 +8,7 @@ import react.core.ReactiveLibrary._
 import react.impls.helper._
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Success, Try}
 
 trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEventObject with DefaultReassignableVar with ReactiveLibraryImplementationHelper {
   metaRxImpl =>
@@ -79,6 +80,10 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
     new SignalImpl(e.wrapped.foldLeft(init) {(acc, ev) =>
       fun(ev, acc)
     }.distinct.cache(init))
+  }
+
+  override protected[react] def signalToTry[A](from: SignalImpl[A, _ <: A]): SignalImpl[Try[A], _ <: Try[A]] = {
+    signalApplicative.map(from)(Success.apply)
   }
 
   def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = {

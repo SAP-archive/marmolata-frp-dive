@@ -7,6 +7,7 @@ import react.cats.{FilterableSyntax, Mergeable}
 import react.core.ReactiveLibrary.{Cancelable, Observable}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 trait ReactiveDeclaration extends ReactiveLibrary with ReactiveLibraryUsage
 
@@ -81,6 +82,8 @@ trait ReactiveLibraryUsage extends ReactiveLibraryUsageTime {
           f(x)
         }
       }
+
+    def toTry: Signal[Try[A]] = signalToTry(s)
   }
 
   implicit final class EventExtensions[A](event: Event[A]) {

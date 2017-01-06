@@ -9,6 +9,7 @@ import react.impls.helper.ReactiveLibraryImplementationHelper
 import scala.concurrent.{ExecutionContext, Future}
 
 import language.higherKinds
+import scala.util.Try
 
 trait HasUnderlying[+A] {
   def under: A
@@ -170,6 +171,10 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
 
   override protected[react] def fold[A, B](e: Event[A], init: B, fun: (A, B) => B): Signal[B] = {
     newSignal(underlying.fold(e.u, init, fun))
+  }
+
+  override protected[react] def signalToTry[A](from: Signal[A]): Signal[Try[A]] = {
+    newSignal(underlying.signalToTry(from.u))
   }
 
   trait _eventApplicative extends EventOperationsTrait[Event] {

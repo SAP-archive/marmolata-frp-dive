@@ -10,6 +10,7 @@ import rx.async.FutureCombinators
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 // TODO: make these unsafes more safe
 import rx.Ctx.Owner.Unsafe.Unsafe
@@ -238,6 +239,15 @@ trait ScalaRxImpl extends ReactiveLibrary
     new Signal(e.wrapped.fold(init) { (current, event) =>
       event.map(x => fun(x.get, current)).getOrElse(current)
     })
+  }
+
+
+  override protected[react] def signalToTry[A](from: Signal[A]): Signal[Try[A]] = {
+    new Signal(
+      Rx {
+        Try(from.wrapped())
+      }
+    )
   }
 
   def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = {

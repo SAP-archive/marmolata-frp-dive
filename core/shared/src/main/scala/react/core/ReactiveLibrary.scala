@@ -6,6 +6,7 @@ import react.cats.{Mergeable, Filterable}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
+import scala.util.Try
 
 
 object ReactiveLibrary {
@@ -218,6 +219,7 @@ trait ReactiveLibrary {
   protected[react] def futureToEvent[A] (f: Future[A])(implicit ec: ExecutionContext): Event[A]
   protected[react] def triggerWhen[A, B, C] (s: Signal[A], e: Event[B], f: (A, B) => C): Event[C]
   protected[react] def fold[A, B] (e: Event[A], init: B, fun: (A, B) => B): Signal[B]
+  protected[react] def signalToTry[A](from: Signal[A]): Signal[Try[A]]
 
   def implementationName: String
 }

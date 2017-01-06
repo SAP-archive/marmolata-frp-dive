@@ -6,6 +6,7 @@ import react.core.ReactiveLibrary.Annotation
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.ref.WeakReference
+import scala.util.{Failure, Success}
 
 trait DefaultTests extends ReactiveLibraryTests {
   import reactiveLibrary._
@@ -760,5 +761,28 @@ trait DefaultTests extends ReactiveLibraryTests {
 
   it should "support Signal inside Signal" in {
     pending
+  }
+
+  "toTry" should "catch exceptions" in {
+    pendingFor(SelfRx, MetaRx) {
+    val v = Var(0)
+
+    val ex1 = new Exception("Hallo")
+    val ex2 = new Exception("Hallo2")
+
+    val w = v.map {
+      case 0 => throw ex1
+      case 1 => throw ex2
+      case x => x
+    }
+
+    val l = collectValues(w.toTry)
+
+    v := 10
+    v := 1
+    v := 0
+
+    l shouldBe Seq(Failure(ex1), Success(10), Failure(ex2), Failure(ex1))
+    }
   }
 }

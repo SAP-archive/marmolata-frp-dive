@@ -9,6 +9,7 @@ import react.impls.helper.ReactiveLibraryImplementationHelper
 
 import scala.collection.immutable.{HashMap, HashSet, SortedMap}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Success, Try}
 
 class SelfRxException(message: String) extends Exception(message)
 
@@ -876,6 +877,10 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
 
   override def fold[A, B](e: Event[A], init: B, fun: (A, B) => B): Signal[B] =
     new FoldSignal(e, init, fun)
+
+  override def signalToTry[A](s: Signal[A]): Signal[Try[A]] = {
+    new MappedSignal[A, Try[A]](s, Success(_))
+  }
 
   override def implementationName: String = "selfrx implementation"
 
