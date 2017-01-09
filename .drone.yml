@@ -8,6 +8,8 @@ pipeline:
   cache-restore:
     image: plugins/sftp-cache
     restore: true
+    when:
+      event: [push, pull_request, tag]
   build:
     image: *image
     environment:
@@ -24,76 +26,22 @@ pipeline:
       - sbt -Dsbt.ivy.home=$IVY2 scalarxJS/test selfrxJS/test
   cloc:
     image: marmolata-registry.mo.sap.corp/marmolata/drone-plugin.cloc
-  # publish_coverage:
-  #   image: *image
-  #   when:
-  #     branch: [dev, master]
-  #     event: push
-  #   commands:
-  #     - export BASE=/var/www/coverage/${CI_REPO##*/}
-  #     - ssh core@mo-4249591b5.mo.sap.corp mkdir -p "${BASE}/${CI_BUILD_NUMBER}" "${BASE}/latest"
-  #     - rsync -aqSD --ignore-errors --force --delete target/scala-2.10/scoverage-report/ core@mo-4249591b5.mo.sap.corp:"${BASE}/${CI_BUILD_NUMBER}"
-  #     - ssh core@mo-4249591b5.mo.sap.corp "rsync -aqSD --ignore-errors --force --delete ${BASE}/\`ls $BASE | sort -rn | head -n 1\`/ ${BASE}/latest"
-  # publish_test:
-  #   image: *image
-  #   when:
-  #     branch: [dev, master]
-  #     event: push
-  #   commands:
-  #     - export BASE=/var/www/test-reports/${CI_REPO##*/}
-  #     - ssh core@mo-4249591b5.mo.sap.corp mkdir -p "${BASE}/${CI_BUILD_NUMBER}" "${BASE}/latest"
-  #     - rsync -aqSD --ignore-errors --force --delete target/test-reports/ core@mo-4249591b5.mo.sap.corp:"${BASE}/${CI_BUILD_NUMBER}"
-  #     - ssh core@mo-4249591b5.mo.sap.corp "rsync -aqSD --ignore-errors --force --delete ${BASE}/\`ls $BASE | sort -rn | head -n 1\`/ ${BASE}/latest"
-  # publish_documentation:
-  #   image: *image
-  #   environment:
-  #     - IVY2=.ivy2
-  #   volumes:
-  #     - /var/www/:/var/www/
-  #   commands:
-  #     - export BASE=/var/www/documentation/${CI_REPO##*/}
-  #     - export JS=${BASE}/js JVM=${BASE}/jvm
-  #     - mkdir -p "${JS}/${CI_BUILD_NUMBER}" "${JVM}/${CI_BUILD_NUMBER}" "${BASE}/jvm-latest" "${BASE}/jvm-latest"
-  #     - cp -ar core/js/target/scala-2.11/api/ "${JS}/${CI_BUILD_NUMBER}"
-  #     - cp -ar core/jvm/target/scala-2.11/api/ "${JVM}/${CI_BUILD_NUMBER}"
-  #     - rsync -aqSD --ignore-errors --force --delete "${JVM}/`ls $JVM | sort -rn | head -n 1`/api/" "${BASE}/jvm-latest"
-  #     - rsync -aqSD --ignore-errors --force --delete "${JS}/`ls $JS | sort -rn | head -n 1`/api/" "${BASE}/js-latest"
-  #   # TODO: when to link latest?
-  #   # when:
-  #   #   event: tag
-  #   #   branch: master
-  # publish_checkstyle:
-  #   image: *image
-  #   environment:
-  #     - IVY2=.ivy2
-  #   volumes:
-  #     - /var/www/:/var/www/
-  #   commands:
-  #     - export BASE=/var/www/checkstyle/${CI_REPO##*/}
-  #     # TODO: aggregate into one report
-  #     - |
-  #       for CHECK in `find . -name scalastyle-result.xml`;
-  #       do
-  #         TARGET="${BASE}/${CI_BUILD_NUMBER}/`echo ${CHECK} | sed -e 's/^.\///' -e 's/\/target//' -e 's/.xml$//' -e 's/\//-/g'`"
-  #         mkdir -p `dirname "${TARGET}"`
-  #         xsltproc /root/contribution/xsl/checkstyle-noframes.xsl "${CHECK}" > "${TARGET}.html"
-  #       done
-  #     - rsync -aqSD --ignore-errors --force --delete "$BASE/`ls $BASE | sort -rn | head -n 1`/" "$BASE/latest"
-  #   # TODO: when to link latest?
-  #   # when:
-  #   #   event: tag
-  #   #   branch: master
+  publish_documentation:
+    image: marmolata-registry.mo.sap.corp/marmolata/drone-plugin.publish:latest
+    when:
+      event: [tag, push]
+      branch: [dev, master, refs/tags/*]
+    commands:
+      - /publish-documentation.sh
   cache-rebuild:
     image: plugins/sftp-cache
     rebuild: true
+    when:
+      event: [push, pull_request, tag]
+      status: [success, failure]
   slack:
     image: plugins/slack
     when:
       change: true
-  # email:
-  #   from: techologyoffice_ci@sap.com
-  #   host: mail.sap.corp
-  #   port: 25
-  #   skip_verify: true
-  #   when:
-  #     change: true
+      event: [push, pull_request, tag]
+      status: [success, failure]
