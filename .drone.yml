@@ -23,7 +23,7 @@ pipeline:
       - sbt -Dsbt.ivy.home=$IVY2 coverage metarxJVM/test metarxJVM/coverageReport || true
       - sbt -Dsbt.ivy.home=$IVY2 coverageReport
       - sbt -Dsbt.ivy.home=$IVY2 coverageAggregate
-      - sbt -Dsbt.ivy.home=$IVY2 scalarxJS/test selfrxJS/test
+      - sbt -Dsbt.ivy.home=$IVY2 scalarxJS/test selfrxJS/test | tee testoutput.txt
   cloc:
     image: marmolata-registry.mo.sap.corp/marmolata/drone-plugin.cloc
   testCoverage:
