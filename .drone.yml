@@ -26,6 +26,29 @@ pipeline:
       - sbt -Dsbt.ivy.home=$IVY2 scalarxJS/test selfrxJS/test
   cloc:
     image: marmolata-registry.mo.sap.corp/marmolata/drone-plugin.cloc
+  testCoverage:
+    image: marmolata-registry.mo.sap.corp/marmolata/drone-plugin.pr-coverage:latest
+    directories: [core/jvm, core/js, sql/jvm, sql/js]
+  warningstatus:
+    image: marmolata-registry.mo.sap.corp/marmolata/drone-plugin.warnings:latest
+  testreport:
+    image: marmolata-registry.mo.sap.corp/marmolata/drone-plugin.testreport:latest
+  publish_artifact_PR:
+    image: *image
+    when:
+      event: pull_request
+    commands:
+      - sbt -Dsbt.ivy.home=.ivy2 publish
+  publish_artifact:
+    image: *image
+    when:
+      event: [push, tag]
+      branch: [dev, master, refs/tags/*]
+    commands:
+      - echo -e "realm=Sonatype Nexus Repository Manager\nhost=$NEXUS_MILESTONE_REPO\nuser=$NEXUS_MILESTONE_USER\npassword=$NEXUS_MILESTONE_PASSWORD" > .credentials
+      - sbt -Dsbt.ivy.home=.ivy2 \
+        'set credentials in ThisBuild += Credentials(Path(".") / ".credentials")' \
+        publish
   publish_documentation:
     image: marmolata-registry.mo.sap.corp/marmolata/drone-plugin.publish:latest
     when:
