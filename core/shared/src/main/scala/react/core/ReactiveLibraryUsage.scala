@@ -78,12 +78,17 @@ trait ReactiveLibraryUsage extends ReactiveLibraryUsageTime {
     /**
       * like TODO: Signal#observe but only trigger after the first change of this signal
       */
-    def observeLater(f: PartialFunction[A, Unit]): Cancelable =
+    def observeLater(f: A => Unit): Cancelable = {
       s.toEvent.observe { x =>
-        if (f.isDefinedAt(x)) {
+        if (!f.isInstanceOf[PartialFunction[_, _]] || f.asInstanceOf[PartialFunction[A, Unit]].isDefinedAt(x)) {
           f(x)
         }
+        else {
+          println("[warn] This usage of observeLater is deprecated and will be removed in a later version. " +
+            "Please specify a total function instead of a partial function")
+        }
       }
+    }
 
     def toTry: Signal[Try[A]] = signalToTry(s)
   }
