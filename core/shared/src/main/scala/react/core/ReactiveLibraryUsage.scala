@@ -52,7 +52,7 @@ trait ReactiveLibraryUsage extends ReactiveLibraryUsageTime {
       */
     def toEvent: Event[A] = self.toEvent(s)
 
-    def toEvents[B](f: A => Event[B]): Event[B] = flattenEvents(signalApplicative.map(s)(f))
+    def toEvents[B](f: A => Event[B]): Event[B] = flattenEvents(marmolataDiveSignalTypeclass.map(s)(f))
 
     /**
       * returns a new Event that triggers each time e is triggered with the value of f]
@@ -143,7 +143,7 @@ trait ReactiveLibraryUsage extends ReactiveLibraryUsageTime {
   implicit def reassignableSignalToSignal[A](p: ReassignableVar[A]): Signal[A] = p.toSignal
 
   implicit def reassignableEventToEvent[A](p: ReassignableEvent[A]): Event[A] = {
-    import self.unsafeImplicits.{signalApplicative => s}
+    import self.unsafeImplicits.{marmolataDiveSignalTypeclass => s}
     import syntax._
     (p.constr: Signal[Event[A]]).flatMap(_.toSignal).toEvent.mapPartial { case Some(x) => x }
   }

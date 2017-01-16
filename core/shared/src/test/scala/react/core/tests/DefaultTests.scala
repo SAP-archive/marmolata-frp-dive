@@ -29,7 +29,7 @@ trait DefaultTests extends ReactiveLibraryTests {
 
   it should "only update the value once in a rhombus" in {
     pendingFor(MetaRx) {
-      import unsafeImplicits.signalApplicative
+      import unsafeImplicits.marmolataDiveSignalTypeclass
       val v = Var(7)
       val w = v.map(x => x + 1)
       val x = v.map(x => x + 2)
@@ -311,7 +311,7 @@ trait DefaultTests extends ReactiveLibraryTests {
       val w = v.map(_ + 1)
       var counter = 0
 
-      import unsafeImplicits.signalApplicative
+      import unsafeImplicits.marmolataDiveSignalTypeclass
 
       v.flatMap { x =>
         val result = w.map {
@@ -559,7 +559,7 @@ trait DefaultTests extends ReactiveLibraryTests {
   }
 
   it should "behave well with flatMap" in {
-    import unsafeImplicits.signalApplicative
+    import unsafeImplicits.marmolataDiveSignalTypeclass
     val v = Var(1)
     val l = collectValues(Signal.Const(identity[Int] _).flatMap(f => v.map(f)))
 

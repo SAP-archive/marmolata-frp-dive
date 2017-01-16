@@ -85,7 +85,7 @@ trait ScalaRxImpl extends ReactiveLibrary
     }
   }
 
-  implicit object eventApplicative extends EventOperationsTrait[Event] {
+  implicit object marmolataDiveEventTypeclass extends EventOperationsTrait[Event] {
     override def merge[A](x1: Event[A], other: Event[A]): Event[A] = {
       import x1._
       val p1 = wrapped.fold((0, None): (Int, Option[CompareUnequal[A]])) { (v, current) =>
@@ -140,7 +140,7 @@ trait ScalaRxImpl extends ReactiveLibrary
     override def apply()(implicit trackDependency: TrackDependency): A = wrapped()(trackDependency.u)
   }
 
-  implicit object signalApplicative extends SignalOperationsTrait[Signal] with Monad[Signal] {
+  implicit object marmolataDiveSignalTypeclass extends SignalOperationsTrait[Signal] with Monad[Signal] {
     override def pure[A](x: A): Signal[A] = {
       new Signal(Rx { x })
     }
@@ -262,6 +262,6 @@ trait ScalaRxImpl extends ReactiveLibrary
   }
 
   object unsafeImplicits extends UnsafeImplicits {
-    implicit val signalApplicative: SignalOperationsTrait[Signal] with Monad[Signal] = scalaRxImpl.signalApplicative
+    implicit val marmolataDiveSignalTypeclass: SignalOperationsTrait[Signal] with Monad[Signal] = scalaRxImpl.marmolataDiveSignalTypeclass
   }
 }

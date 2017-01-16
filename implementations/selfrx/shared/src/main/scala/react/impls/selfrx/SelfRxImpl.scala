@@ -894,7 +894,7 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
     new EventInsideSignal[A](s)
   }
 
-  override implicit object eventApplicative extends EventOperationsTrait[Event] {
+  override implicit object marmolataDiveEventTypeclass extends EventOperationsTrait[Event] {
     override def merge[A](x1: Event[A], x2: Event[A]): selfrx.Event[A] =
       new MergeEvent[A](x1, x2)
 
@@ -913,7 +913,7 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
   }
 
   object unsafeImplicits extends UnsafeImplicits {
-    override implicit val signalApplicative: Monad[Signal] with SignalOperationsTrait[Signal] = self.signalApplicative
+    override implicit val marmolataDiveSignalTypeclass: Monad[Signal] with SignalOperationsTrait[Signal] = self.marmolataDiveSignalTypeclass
   }
 
   override object EventSource extends EventSourceCompanionObject[Event, EventSource] {
@@ -923,7 +923,7 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
     }
   }
 
-  override implicit object signalApplicative extends Monad[Signal] with SignalOperationsTrait[Signal] with TailRecMImpl[Signal] {
+  override implicit object marmolataDiveSignalTypeclass extends Monad[Signal] with SignalOperationsTrait[Signal] with TailRecMImpl[Signal] {
     override def pure[A](x: A): selfrx.Signal[A] = new ConstSignal(x)
 
     override def ap[A, B](ff: Signal[(A) => B])(fa: Signal[A]): Signal[B] =

@@ -201,11 +201,11 @@ trait ReactiveLibrary {
   type TrackDependency <: TrackDependencyTrait
 
   //TODO: rename these to marmolataDiveEventTypeclass and marmolataDiveSignalTypeclass
-  implicit val eventApplicative: EventOperationsTrait[Event]
-  implicit val signalApplicative: SignalOperationsTrait[Signal]
+  implicit val marmolataDiveEventTypeclass: EventOperationsTrait[Event]
+  implicit val marmolataDiveSignalTypeclass: SignalOperationsTrait[Signal]
 
   trait UnsafeImplicits {
-    implicit val signalApplicative: Monad[Signal] with SignalOperationsTrait[Signal]
+    implicit val marmolataDiveSignalTypeclass: Monad[Signal] with SignalOperationsTrait[Signal]
   }
 
   // use these with care as these operations are often leaking

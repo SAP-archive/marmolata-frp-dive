@@ -40,7 +40,7 @@ trait DefaultReassignableVar {
   self: ReactiveLibrary =>
   class ReassignableVar[A] private (constr: Var[Signal[A]]) extends ReassignableVarTrait[A, Signal, TrackDependency] {
 
-    private lazy val self: Signal[A] = unsafeImplicits.signalApplicative.flatten(constr)
+    private lazy val self: Signal[A] = unsafeImplicits.marmolataDiveSignalTypeclass.flatten(constr)
 
     override def update(newValue: A): Unit = constr update (Signal.Const(newValue))
 

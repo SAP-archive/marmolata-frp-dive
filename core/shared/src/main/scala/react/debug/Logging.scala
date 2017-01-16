@@ -174,7 +174,7 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
   }
 
   override protected[react] def flattenEvents[A](s: Signal[Event[A]]): Event[A] = {
-    newEvent(underlying.flattenEvents(underlying.signalApplicative.map(s.u)(_.u)))
+    newEvent(underlying.flattenEvents(underlying.marmolataDiveSignalTypeclass.map(s.u)(_.u)))
   }
 
   override protected[react] def signalToTry[A](from: Signal[A]): Signal[Try[A]] = {
@@ -183,102 +183,102 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
 
   trait _eventApplicative extends EventOperationsTrait[Event] {
     override def map[A, B](fa: Event[A])(f: (A) => B): Event[B] =
-      newEvent(underlying.eventApplicative.map(fa.u)(f))
+      newEvent(underlying.marmolataDiveEventTypeclass.map(fa.u)(f))
 
     override def merge[A](x1: Event[A], x2: Event[A]): Event[A] =
-      newEvent(underlying.eventApplicative.merge(x1.u, x2.u))
+      newEvent(underlying.marmolataDiveEventTypeclass.merge(x1.u, x2.u))
 
     override def filter[A](v: Event[A], cond: (A) => Boolean): Event[A] =
-      newEvent(underlying.eventApplicative.filter(v.u, cond))
+      newEvent(underlying.marmolataDiveEventTypeclass.filter(v.u, cond))
 
     override def lift[A, B](f: (A) => B): (Event[A]) => Event[B] =
-      ev => newEvent(underlying.eventApplicative.lift(f)(ev.u))
+      ev => newEvent(underlying.marmolataDiveEventTypeclass.lift(f)(ev.u))
 
     override def void[A](fa: Event[A]): Event[Unit] =
-      newEvent(underlying.eventApplicative.void(fa.u))
+      newEvent(underlying.marmolataDiveEventTypeclass.void(fa.u))
 
     override def fproduct[A, B](fa: Event[A])(f: (A) => B): Event[(A, B)] =
-      newEvent(underlying.eventApplicative.fproduct(fa.u)(f))
+      newEvent(underlying.marmolataDiveEventTypeclass.fproduct(fa.u)(f))
 
     override def as[A, B](fa: Event[A], b: B): Event[B] =
-      newEvent(underlying.eventApplicative.as(fa.u, b))
+      newEvent(underlying.marmolataDiveEventTypeclass.as(fa.u, b))
   }
 
-  implicit override object eventApplicative extends _eventApplicative
+  implicit override object marmolataDiveEventTypeclass extends _eventApplicative
 
-  override implicit object signalApplicative extends Monad[Signal] with SignalOperationsTrait[Signal] {
+  override implicit object marmolataDiveSignalTypeclass extends Monad[Signal] with SignalOperationsTrait[Signal] {
     override def pure[A](x: A): Signal[A] =
-      newSignal(underlying.signalApplicative.pure(x))
+      newSignal(underlying.marmolataDiveSignalTypeclass.pure(x))
 
     override def ap[A, B](ff: Signal[(A) => B])(fa: Signal[A]): Signal[B] =
-      newSignal(underlying.signalApplicative.ap(ff.u)(fa.u))
+      newSignal(underlying.marmolataDiveSignalTypeclass.ap(ff.u)(fa.u))
 
     override def tailRecM[A, B](a: A)(f: A => Signal[Either[A, B]]): Signal[B] =
-      newSignal(underlying.unsafeImplicits.signalApplicative.tailRecM(a)(f.andThen(x => x.u)))
+      newSignal(underlying.unsafeImplicits.marmolataDiveSignalTypeclass.tailRecM(a)(f.andThen(x => x.u)))
 
     override def map[A, B](fa: Signal[A])(f: (A) => B): Signal[B] =
-      newSignal(underlying.signalApplicative.map(fa.u)(f))
+      newSignal(underlying.marmolataDiveSignalTypeclass.map(fa.u)(f))
 
     override def replicateA[A](n: Int, fa: Signal[A]): Signal[List[A]] =
-      newSignal(underlying.signalApplicative.replicateA(n, fa.u))
+      newSignal(underlying.marmolataDiveSignalTypeclass.replicateA(n, fa.u))
 
     override def traverse[A, G[_], B](value: G[A])(f: (A) => Signal[B])(implicit G: Traverse[G]): Signal[G[B]] =
-      newSignal(underlying.signalApplicative.traverse(value)(f.andThen(_.u)))
+      newSignal(underlying.marmolataDiveSignalTypeclass.traverse(value)(f.andThen(_.u)))
 
     override def sequence[G[_], A](as: G[Signal[A]])(implicit G: Traverse[G]): Signal[G[A]] =
-      newSignal(underlying.signalApplicative.sequence(G.map(as)(_.u)))
+      newSignal(underlying.marmolataDiveSignalTypeclass.sequence(G.map(as)(_.u)))
 
     override def product[A, B](fa: Signal[A], fb: Signal[B]): Signal[(A, B)] =
-      newSignal(underlying.signalApplicative.product(fa.u, fb.u))
+      newSignal(underlying.marmolataDiveSignalTypeclass.product(fa.u, fb.u))
 
     override def ap2[A, B, Z](ff: Signal[(A, B) => Z])(fa: Signal[A], fb: Signal[B]): Signal[Z] =
-      newSignal(underlying.signalApplicative.ap2(ff.u)(fa.u, fb.u))
+      newSignal(underlying.marmolataDiveSignalTypeclass.ap2(ff.u)(fa.u, fb.u))
 
     override def map2[A, B, Z](fa: Signal[A], fb: Signal[B])(f: (A, B) => Z): Signal[Z] =
-      newSignal(underlying.signalApplicative.map2(fa.u, fb.u)(f))
+      newSignal(underlying.marmolataDiveSignalTypeclass.map2(fa.u, fb.u)(f))
 
     override def lift[A, B](f: (A) => B): (Signal[A]) => Signal[B] =
-      s => newSignal(underlying.signalApplicative.lift(f)(s.u))
+      s => newSignal(underlying.marmolataDiveSignalTypeclass.lift(f)(s.u))
 
     override def void[A](fa: Signal[A]): Signal[Unit] =
-      newSignal(underlying.signalApplicative.void(fa.u))
+      newSignal(underlying.marmolataDiveSignalTypeclass.void(fa.u))
 
     override def fproduct[A, B](fa: Signal[A])(f: (A) => B): Signal[(A, B)] =
-      newSignal(underlying.signalApplicative.fproduct(fa.u)(f))
+      newSignal(underlying.marmolataDiveSignalTypeclass.fproduct(fa.u)(f))
 
     override def as[A, B](fa: Signal[A], b: B): Signal[B] =
-      newSignal(underlying.signalApplicative.as(fa.u, b))
+      newSignal(underlying.marmolataDiveSignalTypeclass.as(fa.u, b))
 
     override def tuple2[A, B](f1: Signal[A], f2: Signal[B]): Signal[(A, B)] =
-      newSignal(underlying.signalApplicative.tuple2(f1.u, f2.u))
+      newSignal(underlying.marmolataDiveSignalTypeclass.tuple2(f1.u, f2.u))
 
     override def ap3[A0, A1, A2, Z](f: Signal[(A0, A1, A2) => Z])(f0: Signal[A0], f1: Signal[A1], f2: Signal[A2]): Signal[Z] =
-      newSignal(underlying.signalApplicative.ap3(f.u)(f0.u, f1.u, f2.u))
+      newSignal(underlying.marmolataDiveSignalTypeclass.ap3(f.u)(f0.u, f1.u, f2.u))
 
     override def map3[A0, A1, A2, Z](f0: Signal[A0], f1: Signal[A1], f2: Signal[A2])(f: (A0, A1, A2) => Z): Signal[Z] =
-      newSignal(underlying.signalApplicative.map3(f0.u, f1.u, f2.u)(f))
+      newSignal(underlying.marmolataDiveSignalTypeclass.map3(f0.u, f1.u, f2.u)(f))
 
     override def tuple3[A0, A1, A2, Z](f0: Signal[A0], f1: Signal[A1], f2: Signal[A2]): Signal[(A0, A1, A2)] =
-      newSignal(underlying.signalApplicative.tuple3(f0.u, f1.u, f2.u))
+      newSignal(underlying.marmolataDiveSignalTypeclass.tuple3(f0.u, f1.u, f2.u))
 
     //TODO: implement apXX, mapXX and tupleXX (for XX = 4 - 22)
     // (this has to be done because the underlying library might do something more efficient than the default implementation)
 
     override def flatMap[A, B](fa: Signal[A])(f: (A) => Signal[B]): Signal[B] =
-      newSignal(underlying.unsafeImplicits.signalApplicative.flatMap(fa.u)(f.andThen(_.u)))
+      newSignal(underlying.unsafeImplicits.marmolataDiveSignalTypeclass.flatMap(fa.u)(f.andThen(_.u)))
 
     override def flatten[A](ffa: Signal[Signal[A]]): Signal[A] =
-      newSignal(underlying.unsafeImplicits.signalApplicative.flatten(underlying.signalApplicative.map(ffa.u)(_.u)))
+      newSignal(underlying.unsafeImplicits.marmolataDiveSignalTypeclass.flatten(underlying.marmolataDiveSignalTypeclass.map(ffa.u)(_.u)))
 
     override def mproduct[A, B](fa: Signal[A])(f: (A) => Signal[B]): Signal[(A, B)] =
-      newSignal(underlying.unsafeImplicits.signalApplicative.mproduct(fa.u)(f.andThen(_.u)))
+      newSignal(underlying.unsafeImplicits.marmolataDiveSignalTypeclass.mproduct(fa.u)(f.andThen(_.u)))
 
     override def ifM[B](fa: Signal[Boolean])(ifTrue: => Signal[B], ifFalse: => Signal[B]): Signal[B] =
-      newSignal(underlying.unsafeImplicits.signalApplicative.ifM(fa.u)(ifTrue.u, ifFalse.u))
+      newSignal(underlying.unsafeImplicits.marmolataDiveSignalTypeclass.ifM(fa.u)(ifTrue.u, ifFalse.u))
   }
 
 
   override object unsafeImplicits extends UnsafeImplicits {
-    override implicit val signalApplicative: Monad[Signal] with SignalOperationsTrait[Signal] = self.signalApplicative
+    override implicit val marmolataDiveSignalTypeclass: Monad[Signal] with SignalOperationsTrait[Signal] = self.marmolataDiveSignalTypeclass
   }
 }

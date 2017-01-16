@@ -44,7 +44,7 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
 
   type Signal[+A] = SignalImpl[A, _ <: A]
 
-  object signalApplicative extends SignalOperationsTrait[Signal] with Monad[Signal] with TailRecMImpl[Signal] {
+  object marmolataDiveSignalTypeclass extends SignalOperationsTrait[Signal] with Monad[Signal] with TailRecMImpl[Signal] {
     def pure[A](x: A): SignalImpl[A, _ <: A] = {
       new SignalImpl(metarx.Var(x))
     }
@@ -84,14 +84,14 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
   }
 
   override protected[react] def signalToTry[A](from: SignalImpl[A, _ <: A]): SignalImpl[Try[A], _ <: Try[A]] = {
-    signalApplicative.map(from)(Success.apply)
+    marmolataDiveSignalTypeclass.map(from)(Success.apply)
   }
 
   def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = {
     new EventSourceImpl(FutureToReadChannel(f))
   }
 
-  object eventApplicative extends EventOperationsTrait[Event] {
+  object marmolataDiveEventTypeclass extends EventOperationsTrait[Event] {
     def merge[A](x1: EventSourceImpl[A, _ <: A], x2: EventSourceImpl[A, _ <: A]): EventSourceImpl[A, _ <: A] =
       new EventSourceImpl(x1.wrapped.map(x => x: A) merge x2.wrapped.map(x => x: A))
 
@@ -124,6 +124,6 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
   }
 
   object unsafeImplicits extends UnsafeImplicits {
-    override implicit val signalApplicative = metaRxImpl.signalApplicative
+    override implicit val marmolataDiveSignalTypeclass = metaRxImpl.marmolataDiveSignalTypeclass
   }
 }

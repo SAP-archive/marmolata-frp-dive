@@ -133,7 +133,7 @@ trait PropertyTests extends ReactiveLibraryTests {
   }
 
   behavior of "Signal"
-  MonadTests[Signal](unsafeImplicits.signalApplicative).monad[Int, Int, Int].all.properties.foreach {
+  MonadTests[Signal](unsafeImplicits.marmolataDiveSignalTypeclass).monad[Int, Int, Int].all.properties.foreach {
     case (name, property) =>
       it should name in {
         val test = Test.check(property) {
