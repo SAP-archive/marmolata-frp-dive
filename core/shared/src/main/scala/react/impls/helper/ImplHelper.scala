@@ -1,7 +1,10 @@
 package react.impls.helper
 
+import cats.Monad
 import react.core.ReactiveLibrary
 import react.core.ReactiveLibrary._
+
+import scala.language.higherKinds
 
 
 object NonCancelable extends Cancelable {
@@ -62,4 +65,14 @@ trait DefaultReassignableVar {
 trait ReactiveLibraryImplementationHelper {
   self: ReactiveLibrary =>
   override protected type VolatileHelper = Any
+}
+
+trait TailRecMImpl[M[_]] {
+  self: Monad[M] =>
+  override def tailRecM[A, B](a: A)(f: (A) => M[Either[A, B]]): M[B] = {
+    flatMap(f(a)) {
+      case Left(a) => tailRecM(a)(f)
+      case Right(b) => pure(b)
+    }
+  }
 }

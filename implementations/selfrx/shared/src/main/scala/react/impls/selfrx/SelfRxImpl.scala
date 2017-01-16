@@ -5,7 +5,7 @@ package selfrx
 import cats.{FlatMap, Monad}
 import react.core.ReactiveLibrary._
 import react.core.{ReactiveDeclaration, ReactiveLibrary}
-import react.impls.helper.ReactiveLibraryImplementationHelper
+import react.impls.helper.{TailRecMImpl, ReactiveLibraryImplementationHelper}
 
 import scala.collection.immutable.{HashMap, HashSet, SortedMap}
 import scala.concurrent.{ExecutionContext, Future}
@@ -826,9 +826,11 @@ class EventFromSignal[A](s: Signal[_ <: A]) extends Event[A] {
     strategy.addEvent(this, s.now)
     recalculateChildren(strategy)
   }
+
+  override def becomeOrphan(): Unit = {}
 }
 
-class EventInsideSignal[A](s: Signal[Event[_ <: A]]) extends Event[A] {
+class EventInsideSignal[A](s: Signal[_ <: Event[_ <: A]]) extends Event[A] {
   override def getFirstChild(currentTrigger: TriggerUpdate): Unit = {
     addParent(s, currentTrigger)
     addParent(s.now, currentTrigger)
@@ -846,6 +848,7 @@ class EventInsideSignal[A](s: Signal[Event[_ <: A]]) extends Event[A] {
     }
     else {
       replaceParents(strategy, s, newEvent)
+      strategy.insert(this)
     }
   }
 }
@@ -887,6 +890,10 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
   override def toEvent[A](signal: Signal[A]): Event[A] =
     new EventFromSignal(signal)
 
+  override def flattenEvents[A](s: Signal[Event[A]]): Event[A] = {
+    new EventInsideSignal[A](s)
+  }
+
   override implicit object eventApplicative extends EventOperationsTrait[Event] {
     override def merge[A](x1: Event[A], x2: Event[A]): selfrx.Event[A] =
       new MergeEvent[A](x1, x2)
@@ -906,29 +913,6 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
   }
 
   object unsafeImplicits extends UnsafeImplicits {
-    override implicit object eventApplicative extends FlatMap[Event] with EventOperationsTrait[Event] {
-      override def flatMap[A, B](fa: Event[A])(f: (A) => Event[B]): Event[B] = {
-        val result: selfrx.Signal[Event[B]] =
-          new SignalFromEvent[Event[B]](new MappedEvent[A, Event[B]](fa, f), selfrx.Never)
-        new EventInsideSignal[B](result)
-      }
-
-      override def flatten[A](ffa: selfrx.Event[_ <: selfrx.Event[_ <: A]]): selfrx.Event[_ <: A] = {
-        new EventInsideSignal[A](
-          new SignalFromEvent[Event[A]](ffa, selfrx.Never)
-        )
-      }
-
-      override def map[A, B](fa: selfrx.Event[_ <: A])(f: (A) => B): selfrx.Event[_ <: B] = {
-        self.eventApplicative.map(fa)(f)
-      }
-
-      override def filter[A](v: selfrx.Event[_ <: A], cond: (A) => Boolean): selfrx.Event[_ <: A] =
-        self.eventApplicative.filter(v, cond)
-
-      override def merge[A](x1: selfrx.Event[_ <: A], x2: selfrx.Event[_ <: A]): selfrx.Event[_ <: A] =
-        self.eventApplicative.merge(x1, x2)
-    }
     override implicit val signalApplicative: Monad[Signal] with SignalOperationsTrait[Signal] = self.signalApplicative
   }
 
@@ -939,7 +923,7 @@ trait SelfRxImpl extends ReactiveLibrary with ReactiveLibraryImplementationHelpe
     }
   }
 
-  override implicit object signalApplicative extends Monad[Signal] with SignalOperationsTrait[Signal] {
+  override implicit object signalApplicative extends Monad[Signal] with SignalOperationsTrait[Signal] with TailRecMImpl[Signal] {
     override def pure[A](x: A): selfrx.Signal[A] = new ConstSignal(x)
 
     override def ap[A, B](ff: Signal[(A) => B])(fa: Signal[A]): Signal[B] =

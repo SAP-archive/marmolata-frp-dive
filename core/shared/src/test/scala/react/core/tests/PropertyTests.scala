@@ -1,12 +1,12 @@
 package react.core.tests
 
-import algebra.Eq
+import cats.Eq
 import cats.laws.discipline.{FunctorTests, MonadTests}
 import org.scalacheck.{Arbitrary, Test, Gen}
 import org.scalatest.{FlatSpec, Matchers}
 import react.core.ReactiveLibrary.Annotation
-import algebra.std.tuple._
-import algebra.std.int._
+import cats.instances.tuple._
+import cats.instances.int._
 
 import language.postfixOps
 
@@ -79,7 +79,7 @@ trait PropertyTests extends ReactiveLibraryTests {
   // TODO is it allowed to do undeterministic equality here?
   // (ideally, we'd like to return Gen[Boolean])
   // see also https://github.com/typelevel/cats/issues/1058
-  implicit def signalEq[A](implicit eqO: Eq[A]): algebra.Eq[Signal[A]] = new Eq[Signal[A]] {
+  implicit def signalEq[A](implicit eqO: Eq[A]): cats.Eq[Signal[A]] = new Eq[Signal[A]] {
     override def eqv(x: Signal[A], y: Signal[A]): Boolean = {
       if (!eqO.eqv(x.now, y.now)) {
         info(s"${x.now} != ${y.now} [values: ${signals.map(_.now)}]")
@@ -110,7 +110,7 @@ trait PropertyTests extends ReactiveLibraryTests {
     }
   }
 
-  implicit def eventEq[A](implicit eqO: Eq[A]): algebra.Eq[Event[A]] = new Eq[Event[A]] {
+  implicit def eventEq[A](implicit eqO: Eq[A]): cats.Eq[Event[A]] = new Eq[Event[A]] {
     override def eqv(x: Event[A], y: Event[A]): Boolean = {
       val l1 = collectValues(x)
       val l2 = collectValues(y)

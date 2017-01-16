@@ -85,7 +85,7 @@ trait ScalaRxImpl extends ReactiveLibrary
     }
   }
 
-  implicit object eventApplicative extends EventOperationsTrait[Event] with FlatMap[Event] {
+  implicit object eventApplicative extends EventOperationsTrait[Event] {
     override def merge[A](x1: Event[A], other: Event[A]): Event[A] = {
       import x1._
       val p1 = wrapped.fold((0, None): (Int, Option[CompareUnequal[A]])) { (v, current) =>
@@ -112,17 +112,6 @@ trait ScalaRxImpl extends ReactiveLibrary
       new Event(result.map(_._3))
     }
 
-    override def ap[A, B](ff: Event[(A) => B])(fa: Event[A]): Event[B] = {
-      new Event(Rx {
-        ff.wrapped().flatMap { x =>
-          fa.wrapped().map { p =>
-            val result = x.get(p.get)
-            CompareUnequal(result)
-          }
-        }
-      })
-    }
-
     override def map[A, B](fa: Event[A])(f: (A) => B): Event[B] = {
       new Event(fa.wrapped.map {
         _.map {
@@ -136,37 +125,6 @@ trait ScalaRxImpl extends ReactiveLibrary
         case Some(x) => f(x.get)
         case None => true
       })
-    }
-
-    override def flatMap[A, B](fa: Event[A])(f: (A) => Event[B]): Event[B] = {
-      def wrappedF(a: Option[CompareUnequal[A]]) = a match {
-        case Some(CompareUnequal(x)) => f(x).wrapped
-        case None => Rx(None)
-      }
-
-      // We have to cache the wrapped Rx
-      def reduceFun(u1: (Int, Option[CompareUnequal[A]]), u2: (Int, Option[CompareUnequal[A]])): (Int, Option[CompareUnequal[A]]) =
-        (u1._1 + 1, u2._2)
-      var current: (Int, Rx[Option[CompareUnequal[B]]]) = (-1, Rx { None })
-
-      def wrappedF2(a: (Int, Option[CompareUnequal[A]])) =
-        if (a._1 == current._1) {
-          current._2
-        }
-        else {
-          val result = wrappedF(a._2)
-          current = (a._1, result)
-          result
-        }
-
-      val r = fa.wrapped.map(x => (0, x)).reduce(reduceFun).flatMap(wrappedF2).reduce { (x, y) =>
-        (x, y) match {
-          case (_, Some(z)) => Some(z)
-          case (y, None) => y
-        }
-      }
-
-      new Event(r)
     }
   }
 
@@ -199,6 +157,14 @@ trait ScalaRxImpl extends ReactiveLibrary
     override def map[A, B](fa: Signal[A])(f: (A) => B): Signal[B] = {
       new Signal(fa.wrapped.map(f))
     }
+
+    //TODO: make this tail recursive
+    override def tailRecM[A, B](a: A)(f: (A) => Signal[Either[A, B]]): Signal[B] = {
+      flatMap(f(a)) {
+        case Left(b) => tailRecM(b)(f)
+        case Right(b) => pure(b)
+      }
+    }
   }
 
   override def toSignal[A](init: A, event: Event[A]): Signal[A] =
@@ -213,6 +179,32 @@ trait ScalaRxImpl extends ReactiveLibrary
         }
     }.map(_.flatten))
 
+
+  override protected[react] def flattenEvents[A](s: Signal[Event[A]]): Event[A] = {
+    val eventRx = s.wrapped.fold[(Int, Event[A])](0, s.now)((state, ev) => (state._1 + 1, ev))
+
+    val ev = Rx {
+      val a = eventRx()
+      (a._1, a._2.wrapped())
+    }.fold[(Int, Int, Option[CompareUnequal[A]])]((0, 0, None)) { (state, next) =>
+      if (state._1 == next._1)
+        (state._1, state._2 + 1, next._2)
+      else
+        (next._1, 0, next._2)
+    }
+
+    val ev2 = ev.fold[Option[CompareUnequal[A]]](None) {
+      (state, next) =>
+        // TODO: figure out somehow if the event changed at the same point in time
+        // for now, do not trigger an event in the case the signal just changed
+        if (next._2 == 0)
+          state
+        else
+          next._3
+    }
+
+    new Event(ev2)
+  }
 
   override def triggerWhen[A, B, C](s: Signal[A], e: Event[B], f: (A, B) => C): Event[C] = {
     val e2 = e.wrapped.fold((0, None): (Int, Option[CompareUnequal[B]])) { (v, current) =>
@@ -233,7 +225,6 @@ trait ScalaRxImpl extends ReactiveLibrary
 
     new Event(result.filter(_._1).map(_._3))
   }
-
 
   override protected[react] def fold[A, B](e: Event[A], init: B, fun: (A, B) => B): Signal[B] = {
     new Signal(e.wrapped.fold(init) { (current, event) =>
@@ -271,7 +262,6 @@ trait ScalaRxImpl extends ReactiveLibrary
   }
 
   object unsafeImplicits extends UnsafeImplicits {
-    implicit val eventApplicative: EventOperationsTrait[Event] with FlatMap[Event] = scalaRxImpl.eventApplicative
     implicit val signalApplicative: SignalOperationsTrait[Signal] with Monad[Signal] = scalaRxImpl.signalApplicative
   }
 }

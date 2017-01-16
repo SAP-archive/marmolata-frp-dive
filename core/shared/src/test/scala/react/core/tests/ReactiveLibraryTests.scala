@@ -1,6 +1,6 @@
 package react.core.tests
 
-import algebra.Eq
+import cats.Eq
 import org.scalacheck.{Arbitrary, Gen, Test}
 import org.scalatest._
 import react.core.ReactiveDeclaration
@@ -48,7 +48,6 @@ trait ReactiveLibraryTests extends FlatSpec with Matchers {
     class C {
       import reactiveLibrary._
       def futureToEvent[A](f: Future[A])(implicit ec: ExecutionContext): Event[A] = f.toEvent
-      def unsafeEventApplicative = unsafeImplicits.eventApplicative
     }
     object C extends C
   }

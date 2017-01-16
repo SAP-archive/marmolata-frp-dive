@@ -173,6 +173,10 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
     newSignal(underlying.fold(e.u, init, fun))
   }
 
+  override protected[react] def flattenEvents[A](s: Signal[Event[A]]): Event[A] = {
+    newEvent(underlying.flattenEvents(underlying.signalApplicative.map(s.u)(_.u)))
+  }
+
   override protected[react] def signalToTry[A](from: Signal[A]): Signal[Try[A]] = {
     newSignal(underlying.signalToTry(from.u))
   }
@@ -209,8 +213,8 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
     override def ap[A, B](ff: Signal[(A) => B])(fa: Signal[A]): Signal[B] =
       newSignal(underlying.signalApplicative.ap(ff.u)(fa.u))
 
-    override def pureEval[A](x: Eval[A]): Signal[A] =
-      newSignal(underlying.signalApplicative.pureEval(x))
+    override def tailRecM[A, B](a: A)(f: A => Signal[Either[A, B]]): Signal[B] =
+      newSignal(underlying.unsafeImplicits.signalApplicative.tailRecM(a)(f.andThen(x => x.u)))
 
     override def map[A, B](fa: Signal[A])(f: (A) => B): Signal[B] =
       newSignal(underlying.signalApplicative.map(fa.u)(f))
@@ -275,12 +279,6 @@ class DebugLayer(protected val underlying: ReactiveLibrary)
 
 
   override object unsafeImplicits extends UnsafeImplicits {
-    @deprecated("event is not a monad", "0.1.93")
-    override implicit object eventApplicative extends FlatMap[Event] with self._eventApplicative {
-      override def flatMap[A, B](fa: Event[A])(f: (A) => Event[B]): Event[B] =
-        newEvent(underlying.unsafeImplicits.eventApplicative.flatMap(fa.u)(f.andThen(_.u)))
-    }
-
     override implicit val signalApplicative: Monad[Signal] with SignalOperationsTrait[Signal] = self.signalApplicative
   }
 }

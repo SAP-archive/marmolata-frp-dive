@@ -44,7 +44,7 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
 
   type Signal[+A] = SignalImpl[A, _ <: A]
 
-  object signalApplicative extends SignalOperationsTrait[Signal] with Monad[Signal] {
+  object signalApplicative extends SignalOperationsTrait[Signal] with Monad[Signal] with TailRecMImpl[Signal] {
     def pure[A](x: A): SignalImpl[A, _ <: A] = {
       new SignalImpl(metarx.Var(x))
     }
@@ -70,6 +70,7 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
   def toEvent[A](signal: Signal[A]): Event[A] =
     new EventSourceImpl(signal.wrapped)
 
+  override protected[react] def flattenEvents[A](s: SignalImpl[EventSourceImpl[A, _ <: A], _ <: EventSourceImpl[A, _ <: A]]): EventSourceImpl[A, _ <: A] = ???
 
   override protected[react] def triggerWhen[A, B, C](s: SignalImpl[A, _ <: A], e: EventSourceImpl[B, _ <: B], f: (A, B) => C): EventSourceImpl[C, _ <: C] = {
     new EventSourceImpl[C, C](s.wrapped.zipWith(e.wrapped)(f))
@@ -90,20 +91,12 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
     new EventSourceImpl(FutureToReadChannel(f))
   }
 
-  object eventApplicative extends EventOperationsTrait[Event] with FlatMap[Event] {
+  object eventApplicative extends EventOperationsTrait[Event] {
     def merge[A](x1: EventSourceImpl[A, _ <: A], x2: EventSourceImpl[A, _ <: A]): EventSourceImpl[A, _ <: A] =
       new EventSourceImpl(x1.wrapped.map(x => x: A) merge x2.wrapped.map(x => x: A))
 
-    override def ap[A, B](ff: EventSourceImpl[(A) => B, _ <: (A) => B])(fa: EventSourceImpl[A, _ <: A]): EventSourceImpl[B, _ <: B] =
-      new EventSourceImpl(ff.wrapped zip fa.wrapped map { case (a, b) => a(b) })
-
     override def filter[A](v: EventSourceImpl[A, _ <: A], cond: (A) => Boolean): EventSourceImpl[A, _ <: A] =
       new EventSourceImpl(v.wrapped.filter(cond))
-
-    override def flatMap[A, B](fa: EventSourceImpl[A, _ <: A])(f: (A) => EventSourceImpl[B, _ <: B]): EventSourceImpl[B, _ <: B] = {
-      def wrappedF(a: A): ReadChannel[B] = f(a).wrapped.map(x => x)
-      new EventSourceImpl(fa.wrapped.flatMap(wrappedF))
-    }
 
     override def map[A, B](fa: EventSourceImpl[A, _ <: A])(f: (A) => B): EventSourceImpl[B, _ <: B] = {
       new EventSourceImpl(fa.wrapped.map(f))
@@ -131,7 +124,6 @@ trait MetaRxImpl extends ReactiveLibrary with DefaultSignalObject with DefaultEv
   }
 
   object unsafeImplicits extends UnsafeImplicits {
-    override implicit val eventApplicative = metaRxImpl.eventApplicative
     override implicit val signalApplicative = metaRxImpl.signalApplicative
   }
 }

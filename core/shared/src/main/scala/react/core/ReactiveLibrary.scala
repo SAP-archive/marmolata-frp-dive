@@ -105,6 +105,13 @@ object ReactiveLibrary {
         last = Some(x)
       }
     }
+
+    def observeLaterWithOldValue(f: (A, A) => Unit): Cancelable = {
+      observeWithOldValue {
+        case (None, _) =>
+        case (Some(oldValue), newValue) => f(oldValue, newValue)
+      }
+    }
   }
 
   trait EventTrait[+A] extends Observable[A] with Annotateable
@@ -193,12 +200,11 @@ trait ReactiveLibrary {
   type EventSource[A] <: Event[A] with EventSourceTrait[A]
   type TrackDependency <: TrackDependencyTrait
 
+  //TODO: rename these to marmolataDiveEventTypeclass and marmolataDiveSignalTypeclass
   implicit val eventApplicative: EventOperationsTrait[Event]
   implicit val signalApplicative: SignalOperationsTrait[Signal]
 
   trait UnsafeImplicits {
-    @deprecated("event is not a monad, not even close, not even applicative or apply", "0.1.92")
-    implicit val eventApplicative: FlatMap[Event] with EventOperationsTrait[Event]
     implicit val signalApplicative: Monad[Signal] with SignalOperationsTrait[Signal]
   }
 
@@ -219,6 +225,7 @@ trait ReactiveLibrary {
   protected[react] def futureToEvent[A] (f: Future[A])(implicit ec: ExecutionContext): Event[A]
   protected[react] def triggerWhen[A, B, C] (s: Signal[A], e: Event[B], f: (A, B) => C): Event[C]
   protected[react] def fold[A, B] (e: Event[A], init: B, fun: (A, B) => B): Signal[B]
+  protected[react] def flattenEvents[A](s: Signal[Event[A]]): Event[A]
   protected[react] def signalToTry[A](from: Signal[A]): Signal[Try[A]]
 
   def implementationName: String

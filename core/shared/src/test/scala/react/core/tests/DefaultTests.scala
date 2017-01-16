@@ -158,8 +158,7 @@ trait DefaultTests extends ReactiveLibraryTests {
     val promises = new Array[Promise[Int]](10)
     (0 to 9) foreach { i => promises(i) = Promise[Int]() }
     val v = Var(0)
-    implicit val e = DeprecationForwarder.C.unsafeEventApplicative
-    val w = v.toEvent.flatMap { i =>
+    val w = v.toEvents { i =>
       DeprecationForwarder.C.futureToEvent(promises(i).future)
     }
 
@@ -198,8 +197,7 @@ trait DefaultTests extends ReactiveLibraryTests {
     implicit val queue = new SimpleExecutionContext()
     val v = EventSource[Int]
     val p = Promise[Int]
-    implicit val eventApplicative = DeprecationForwarder.C.unsafeEventApplicative
-    val r = v.flatMap { i => DeprecationForwarder.C.futureToEvent(p.future) }
+    val r = v.toSignal.toEvents { i => DeprecationForwarder.C.futureToEvent(p.future) }
     v emit 10
     queue.runQueue()
     val l = collectValues(r)
@@ -327,47 +325,6 @@ trait DefaultTests extends ReactiveLibraryTests {
       }
 
       counter should be <= 500
-    }
-  }
-
-  it should "zip together events only if there's a previous value" in {
-    pendingFor(ScalaRx) {
-      implicit val e = DeprecationForwarder.C.unsafeEventApplicative
-
-      val v1 = EventSource[Int]()
-      val v2 = EventSource[Int]()
-      val l = collectValues(v1 product v2)
-
-      v1 emit 7
-      v1 emit 8
-      v2 emit 3
-      v2 emit 5
-
-      val l2 = collectValues(v1 product v2)
-
-      v2 emit 99
-
-      l shouldBe List((8, 3), (8, 5), (8, 99))
-      l2 shouldBe List.empty
-    }
-  }
-
-  it should "not remember its value as an event (1)" taggedAs(DeprecatedTest) in {
-    pendingFor(SelfRx, MetaRx) {
-      implicit val d = DeprecationForwarder.C.unsafeEventApplicative
-
-      val v = Var(7)
-      val w = Var(8)
-      val e = v.toEvent
-
-      val l = collectValues(e product w.toEvent)
-
-      w := 10
-      w := 11
-      v := 8
-      v := 9
-
-      l shouldBe List((8, 11), (9, 11))
     }
   }
 
@@ -761,6 +718,64 @@ trait DefaultTests extends ReactiveLibraryTests {
 
   it should "support Signal inside Signal" in {
     pending
+  }
+
+  it should "support flattenEvents" in {
+    val e1 = EventSource[Int]
+    val e2 = EventSource[Int]
+
+    val v = Var[Event[Int]](e1)
+
+    val l = collectValues(v.flatten)
+
+    e1 emit 10
+    e2 emit 12
+    e1 emit 13
+
+    v := e2
+
+    e1 emit 14
+    e2 emit 15
+    e2 emit 15
+
+    v := e1
+
+    e1 emit 10
+    e2 emit 10
+
+    v := Event.Never
+
+    e1 emit 12
+    e2 emit 13
+
+    l shouldBe List(10, 13, 15, 15, 10)
+  }
+
+  it should "trigger event of flattenEvents when Signal changes at the same time" in {
+    pendingFor(ScalaRx) {
+      val v = Var(0)
+
+      val e1 = v.map(_ * 2).toEvent
+      val e2 = v.map(_ * 3).toEvent
+
+      val s = v.map { w =>
+        if (w % 2 == 0)
+          e1
+        else
+          e2
+      }
+
+      val e = s.flatten
+      val l = collectValues(e)
+
+      v := 2
+      v := 4
+      v := 3
+      v := 7
+      v := 8
+
+      l shouldBe List(4, 8, 9, 21, 16)
+    }
   }
 
   "toTry" should "catch exceptions" in {
