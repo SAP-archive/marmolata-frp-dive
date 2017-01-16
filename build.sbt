@@ -23,11 +23,6 @@ lazy val commonSettings = Seq(
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8",
-  // TODO: this command is used to use node instead of RhinoJS, but unfortunately this
-  //       makes ScalaTest crash with 'cannot read property filename$1 of undefined'
-  //       this is bad since the tests are really _much_ slower like this
-  //       see also https://github.com/scalatest/scalatest/issues/926
-  scalaJSUseRhino in Global := false,
   logBuffered in Test := false
 ) ++ nexusPublishingSettings ++ fixScalastyle
 
