@@ -33,7 +33,7 @@ trait ReactiveLibraryUsage extends ReactiveLibraryUsageTime {
         val thisId = currentId
         f.map { res =>
           if (currentId > lastId) {
-            lastId = currentId
+            lastId = thisId
             result := res
           }
         }
