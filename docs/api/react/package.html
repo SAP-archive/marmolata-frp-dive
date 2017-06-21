@@ -1,0 +1,290 @@
+<!DOCTYPE html >
+<html>
+        <head>
+          <title>react - react</title>
+          <meta name="description" content="react - react" />
+          <meta name="keywords" content="react react" />
+          <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+          
+      <link href="../lib/template.css" media="screen" type="text/css" rel="stylesheet" />
+      <link href="../lib/diagrams.css" media="screen" type="text/css" rel="stylesheet" id="diagrams-css" />
+      <script type="text/javascript" src="../lib/jquery.js" id="jquery-js"></script>
+      <script type="text/javascript" src="../lib/jquery-ui.js"></script>
+      <script type="text/javascript" src="../lib/template.js"></script>
+      <script type="text/javascript" src="../lib/tools.tooltip.js"></script>
+      
+      <script type="text/javascript">
+         if(top === self) {
+            var url = '../index.html';
+            var hash = 'react.package';
+            var anchor = window.location.hash;
+            var anchor_opt = '';
+            if (anchor.length >= 1)
+              anchor_opt = '@' + anchor.substring(1);
+            window.location.href = url + '#' + hash + anchor_opt;
+         }
+   	  </script>
+    
+        </head>
+        <body class="value">
+      <div id="definition">
+        <img alt="Package" src="../lib/package_big.png" />
+        
+        <h1>react</h1><span class="permalink">
+      <a href="../index.html#react.package" title="Permalink" target="_top">
+        <img src="../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      </div>
+
+      <h4 id="signature" class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <span class="name">react</span>
+      </span>
+      </h4>
+      
+          <div id="comment" class="fullcommenttop"><div class="comment cmt"><h4> Overview </h4><p>This library provides reactive programming primitives to be able to do reactive functional programming.</p><h4> Usage </h4><p>To use this library, include the following import statements in any file:</p><pre><span class="kw">import</span> reactive.library._
+<span class="kw">import</span> reactive.library.syntax._</pre><p>The central concepts of this library are <a href="core/ReactiveLibrary.html#Signal[+A]&lt;:react.core.ReactiveLibrary.SignalTrait[A,ReactiveLibrary.this.TrackDependency]withReactiveLibrary.this.VolatileHelper" class="extmbr" name="react.core.ReactiveLibrary.Signal">Signal</a> and <a href="core/ReactiveLibrary.html#Event[+A]&lt;:react.core.ReactiveLibrary.EventTrait[A]withReactiveLibrary.this.VolatileHelper" class="extmbr" name="react.core.ReactiveLibrary.Event">Event</a></p><h5> Signal </h5><p>A signal is a time-varying value, i.e. for every point in time, a Signal[A] has a value of type A.
+Signals can represent any kind of values and can be composed. In the context of marmolata,
+a Signal may represent e.g. the current value of an input field or the currently displayed sql query in a table.</p><p>Signals can be created with the <a href="core/ReactiveLibrary.html#Var[A]&lt;:ReactiveLibrary.this.Signal[A]withreact.core.ReactiveLibrary.VarTrait[A,ReactiveLibrary.this.TrackDependency]" class="extmbr" name="react.core.ReactiveLibrary.Var">Var</a> and <a href="core/ReactiveLibrary$$SignalCompanionObject.html#Const[A](value:A):Signal[A]" class="extmbr" name="react.core.ReactiveLibrary.SignalCompanionObject#Const">Signal.Const</a> constructors.
+Var creates a reactive variable
+that can be changed by the <a href="core/ReactiveLibrary$$VarTrait.html#:=(newValue:A):Unit" class="extmbr" name="react.core.ReactiveLibrary.VarTrait#:=">:=</a> function, while Const creates a Signal that's never changed.</p><h5> Example </h5><pre><span class="kw">import</span> reactive.library._
+<span class="kw">import</span> reactive.library.syntax._
+
+<span class="kw">val</span> var1 = Var(<span class="num">5</span>)
+var1.observe(x <span class="kw">=&gt;</span> println(s<span class="lit">"new value of var1: x"</span>))
+&gt; <span class="kw">new</span> value of var1: <span class="num">5</span>
+
+var1 := <span class="num">10</span>
+&gt; <span class="kw">new</span> value of var1: <span class="num">10</span>
+
+var1 := <span class="num">15</span>
+&gt; <span class="kw">new</span> value of var1: <span class="num">15</span></pre><p>As you can see here, <a href="core/ReactiveLibrary$$Observable.html#observe(f:A=&gt;Unit):react.core.ReactiveLibrary.Cancelable" class="extmbr" name="react.core.ReactiveLibrary.Observable#observe">observe</a> can be used to do side effects whenever the value of a signal changes.
+Note, that it should be avoid to use observe and instead build new Signals and Events out of older ones via methods like
+<a href="http://typelevel.org/cats/api/index.html#cats.Functor$$Ops@map[B](f:A=&gt;B):F[B]" target="_blank">map</a>,
+<a href="http://typelevel.org/cats/api/index.html#cats.Cartesian$$Ops@product[B](fb:F[B]):F[(A,B)]" target="_blank">product</a>,
+<a href="http://typelevel.org/cats/api/index.html#cats.Cartesian$$Ops@product[B](fb:F[B]):F[(A,B)]" target="_blank">map2</a>,
+<a href="core/ReactiveLibraryUsage$SignalExtensions.html#triggerWhen[B](e:ReactiveLibraryUsage.this.Event[B]):ReactiveLibraryUsage.this.Event[A]" class="extmbr" name="react.core.ReactiveLibraryUsage.SignalExtensions#triggerWhen">triggerWhen</a>,
+<a href="core/ReactiveLibraryUsage$SignalExtensions.html#changeWhen(e:ReactiveLibraryUsage.this.Event[Any]):ReactiveLibraryUsage.this.Signal[A]" class="extmbr" name="react.core.ReactiveLibraryUsage.SignalExtensions#changeWhen">changeWhen</a>
+and give these Signals back to the Marmolata platform.</p><pre><span class="kw">import</span> reactive.library._
+<span class="kw">import</span> reactive.library.signal._
+
+<span class="kw">val</span> v1 = Var(<span class="num">5</span>)
+<span class="kw">val</span> v2 = Var(<span class="num">7</span>)
+<span class="cmt">// combine v1 and v2 and build a tuple</span>
+<span class="kw">val</span> v: Signal[(<span class="std">Int</span>, <span class="std">Int</span>)] = v1 product v2
+v.observe(x <span class="kw">=&gt;</span> println(s<span class="lit">"v now has value dollarx"</span>)
+&gt; v now has value (<span class="num">5</span>, <span class="num">7</span>)
+v1 := <span class="num">10</span>
+&gt; v now has value (<span class="num">10</span>, <span class="num">7</span>)
+v2 := <span class="num">17</span>
+&gt; v now has value (<span class="num">10</span>, <span class="num">17</span>)
+v2 := <span class="num">17</span>
+v2 := <span class="num">20</span>
+&gt; v now has value (<span class="num">10</span>, <span class="num">20</span>)
+
+<span class="kw">val</span> w = v1.map(_ * <span class="num">10</span>)
+w.observe(x <span class="kw">=&gt;</span> println(<span class="lit">"w now has value dollarx"</span>))
+&gt; w now has value <span class="num">10</span>
+v := <span class="num">7</span>
+&gt; v now has value (<span class="num">7</span>, <span class="num">20</span>)
+&gt; w now has value <span class="num">14</span></pre><p>By using these primitives, it's ensured that Signals don't get updated to intermediate values. Consider the following example:</p><pre><span class="kw">import</span> reactive.library._
+<span class="kw">import</span> reactive.library.signal._
+
+<span class="kw">val</span> v = Var(<span class="num">0</span>)
+<span class="kw">val</span> w = v.map(_ + <span class="num">3</span>)
+<span class="kw">val</span> z = v.map(<span class="num">2</span> * _)
+<span class="kw">val</span> r = w.map2(z)((x, y) <span class="kw">=&gt;</span> x + y)
+
+r.observe(x <span class="kw">=&gt;</span> s<span class="lit">"r now has value dollarx"</span>)
+&gt; r now has value <span class="num">3</span>
+v := <span class="num">2</span>
+&gt; r now has value <span class="num">9</span>
+v := <span class="num">10</span>
+&gt; r now has value <span class="num">33</span></pre><p>Note, that v, w, z and r get updated atomically. So, there's no intermediate state when w is already updated but z isn't yet updated.</p><h5> Events </h5><p><a href="core/ReactiveLibrary.html#Event[+A]&lt;:react.core.ReactiveLibrary.EventTrait[A]withReactiveLibrary.this.VolatileHelper" class="extmbr" name="react.core.ReactiveLibrary.Event">Event[A] </a> represent the entirety of specific points in time when some event happens.
+This could e.g. be the event representing Button clicks or the event representing tablre reloads. An event can have associated data, e.g.
+the mouse position of a Button click or the associated data of a table reload. But often, scala.Unit is used.</p><p>Events can be created with the <a href="core/ReactiveLibrary$$EventSourceCompanionObject.html#apply[A]():EventSource[A]" class="extmbr" name="react.core.ReactiveLibrary.EventSourceCompanionObject#apply">EventSource constructor</a> or created from other events by methods like
+<a href="cats/FilterableSyntax$MergeableObs.html#merge[B&gt;:A](other:F[B]):F[B]" class="extmbr" name="react.cats.FilterableSyntax.MergeableObs#merge">merge</a>, <a href="cats/FilterableSyntax$FilterableObs.html#filter(cond:A=&gt;Boolean):F[A]" class="extmbr" name="react.cats.FilterableSyntax.FilterableObs#filter">filter</a>,
+<a href="http://typelevel.org/cats/api/index.html#cats.Functor$$Ops@map[B](f:A=&gt;B):F[B]" target="_blank">map</a>,
+<a href="cats/FilterableSyntax$FilterableObs.html#mapPartial[B](f:PartialFunction[A,B])(implicitisFunctor:cats.Functor[F]):F[B]" class="extmbr" name="react.cats.FilterableSyntax.FilterableObs#mapPartial">mapPartial</a>,
+<a href="core/ReactiveLibraryUsage$SignalExtensions.html#toEvent:ReactiveLibraryUsage.this.Event[A]" class="extmbr" name="react.core.ReactiveLibraryUsage.SignalExtensions#toEvent">toEvent</a>,
+<a href="core/ReactiveLibraryUsage$SignalExtensions.html#triggerWhen[B](e:ReactiveLibraryUsage.this.Event[B]):ReactiveLibraryUsage.this.Event[A]" class="extmbr" name="react.core.ReactiveLibraryUsage.SignalExtensions#triggerWhen">triggerWhen</a>,
+<a href="core/ReactiveLibraryUsage$EventExtensions.html#mergeEither[B](e:ReactiveLibraryUsage.this.Event[B]):ReactiveLibraryUsage.this.Event[Either[A,B]]" class="extmbr" name="react.core.ReactiveLibraryUsage.EventExtensions#mergeEither">mergeEither</a>.</p><h5> Example </h5><pre><span class="kw">import</span> reactive.library._
+<span class="kw">import</span> reactive.library.syntax._
+
+<span class="kw">val</span> e = EventSource[<span class="std">Int</span>]
+<span class="kw">val</span> f = EventSource[<span class="std">Int</span>]
+<span class="kw">val</span> eMergeFilteredF = e merge f.filter(_ % <span class="num">2</span> == <span class="num">0</span>)
+<span class="kw">val</span> eMergeFilteredFSignal = eMergeFilteredF.toSignal(<span class="num">0</span>)
+
+e.observe(x <span class="kw">=&gt;</span> <span class="lit">"e is triggered: dollarx"</span>)
+f.observe(x <span class="kw">=&gt;</span> <span class="lit">"f is triggered: dollarx"</span>)
+eMergeFilteredF.observe(x <span class="kw">=&gt;</span> <span class="lit">"eMergeFilteredF is triggered: dollarx"</span>)
+eMergeFilteredFSignal.observe(x <span class="kw">=&gt;</span> <span class="lit">"eMergeFilteredFSignal changed to: dollarx"</span>)
+&gt; eMergeFilteredFSignal changed to: <span class="num">0</span>
+
+e emit <span class="num">10</span>
+&gt; e is triggered: <span class="num">10</span>
+&gt; eMergeFilteredF is triggered: <span class="num">10</span>
+&gt; eMergeFileredFSignal is changed to: <span class="num">10</span>
+
+f emit <span class="num">5</span>
+&gt; f is triggered: <span class="num">5</span>
+
+f emit <span class="num">20</span>
+&gt; f is triggered: <span class="num">20</span>
+&gt; eMergeFilteredF is triggered: <span class="num">20</span>
+&gt; eMergeFilteredFSignal is changed to: <span class="num">20</span>
+
+e emit <span class="num">20</span>
+&gt; e is triggered: <span class="num">20</span>
+&gt; eMergeFilteredF is triggered: <span class="num">20</span></pre></div><div class="toggleContainer block">
+          <span class="toggle">Linear Supertypes</span>
+          <div class="superTypes hiddenContent"><span class="extype" name="scala.AnyRef">AnyRef</span>, <span class="extype" name="scala.Any">Any</span></div>
+        </div></div>
+        
+
+      <div id="mbrsel">
+        <div id="textfilter"><span class="pre"></span><span class="input"><input id="mbrsel-input" type="text" accesskey="/" /></span><span class="post"></span></div>
+        <div id="order">
+              <span class="filtertype">Ordering</span>
+              <ol>
+                
+                <li class="alpha in"><span>Alphabetic</span></li>
+                <li class="inherit out"><span>By Inheritance</span></li>
+              </ol>
+            </div>
+        <div id="ancestors">
+                <span class="filtertype">Inherited<br />
+                </span>
+                <ol id="linearization">
+                  <li class="in" name="react"><span>react</span></li><li class="in" name="scala.AnyRef"><span>AnyRef</span></li><li class="in" name="scala.Any"><span>Any</span></li>
+                </ol>
+              </div><div id="ancestors">
+            <span class="filtertype"></span>
+            <ol>
+              <li class="hideall out"><span>Hide All</span></li>
+              <li class="showall in"><span>Show All</span></li>
+            </ol>
+          </div>
+        <div id="visbl">
+            <span class="filtertype">Visibility</span>
+            <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+          </div>
+      </div>
+
+      <div id="template">
+        <div id="allMembers">
+        
+
+        
+
+        
+
+        <div id="values" class="values members">
+              <h3>Value Members</h3>
+              <ol><li name="react.cats" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="cats"></a>
+      <a id="cats:cats"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="cats/package.html"><span class="name">cats</span></a>
+      </span>
+      </h4><span class="permalink">
+      <a href="../index.html#react.package@cats" title="Permalink" target="_top">
+        <img src="../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      
+    </li><li name="react.core" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="core"></a>
+      <a id="core:core"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="core/package.html"><span class="name">core</span></a>
+      </span>
+      </h4><span class="permalink">
+      <a href="../index.html#react.package@core" title="Permalink" target="_top">
+        <img src="../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      
+    </li><li name="react.debug" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="debug"></a>
+      <a id="debug:debug"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="debug/package.html"><span class="name">debug</span></a>
+      </span>
+      </h4><span class="permalink">
+      <a href="../index.html#react.package@debug" title="Permalink" target="_top">
+        <img src="../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      
+    </li><li name="react.impls" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="impls"></a>
+      <a id="impls:impls"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="impls/package.html"><span class="name">impls</span></a>
+      </span>
+      </h4><span class="permalink">
+      <a href="../index.html#react.package@impls" title="Permalink" target="_top">
+        <img src="../lib/permalink.png" alt="Permalink" />
+      </a>
+    </span>
+      
+    </li></ol>
+            </div>
+
+        
+
+        
+        </div>
+
+        <div id="inheritedMembers">
+        <div class="parent" name="scala.AnyRef">
+              <h3>Inherited from <span class="extype" name="scala.AnyRef">AnyRef</span></h3>
+            </div><div class="parent" name="scala.Any">
+              <h3>Inherited from <span class="extype" name="scala.Any">Any</span></h3>
+            </div>
+        
+        </div>
+
+        <div id="groupedMembers">
+        <div class="group" name="Ungrouped">
+              <h3>Ungrouped</h3>
+              
+            </div>
+        </div>
+
+      </div>
+
+      <div id="tooltip"></div>
+
+      <div id="footer">  </div>
+
+
+    </body>
+      </html>
