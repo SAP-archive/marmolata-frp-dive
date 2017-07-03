@@ -19,7 +19,7 @@ lazy val fixScalastyle = Seq(
 )
 
 lazy val commonSettings = Seq(
-  version := "0.4.0",
+  version := "0.4.1",
   organization := "com.sap.marmolata",
   scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-Xfatal-warnings"),
   scalaVersion := "2.11.8",
