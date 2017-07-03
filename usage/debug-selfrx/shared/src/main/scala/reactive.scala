@@ -1,8 +1,9 @@
 import com.sap.marmolata.react.api.ReactiveDeclaration
-import com.sap.marmolata.react.react.debug.{AnnotateStack, DebugLayer, StrictMap}
-import com.sap.marmolata.react.react.impls.selfrx.SelfRxImpl
-import com.sap.marmolata.react.react.impls.selfrx.debugger.DebuggerSelfRxImpl
-import com.sap.marmolata.react.react.impls.selfrx.debugger.updatelogger.{HasHistoryLogger, LogSelfrxImpl, RecordingLogUpdates}
+import com.sap.marmolata.react.debug.{AnnotateStack, DebugLayer, StrictMap}
+import com.sap.marmolata.react.debug.{AnnotateStack, StrictMap}
+import com.sap.marmolata.react.impls.selfrx.SelfRxImpl
+import com.sap.marmolata.react.impls.selfrx.debugger.DebuggerSelfRxImpl
+import com.sap.marmolata.react.impls.selfrx.debugger.updatelogger.{HasHistoryLogger, LogSelfrxImpl, RecordingLogUpdates}
 
 package object reactive {
   val library: ReactiveDeclaration = {

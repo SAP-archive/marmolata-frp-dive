@@ -1,15 +1,14 @@
-package com.sap.marmolata.react.react.logged
+package com.sap.marmolata.react.logged
 
-import com.sap.marmolata.react.react.core.ReactiveLibrary.Nameable
-import com.sap.marmolata.react.react.debug.{HasUnderlying, DebugLayer}
+import com.sap.marmolata.react.api.ReactiveLibrary.Nameable
 
-class AnnotateStack(underlying: com.sap.marmolata.react.react.ReactiveLibrary) extends DebugLayer(underlying) {
+class AnnotateStack(underlying: com.sap.marmolata.react.api.ReactiveLibrary) extends DebugLayer(underlying) {
   override def onNew(u: HasUnderlying[Nameable]): Unit = {
     super.onNew(u)
     val currentStackTrace = new RuntimeException().getStackTrace
     val stackframe = currentStackTrace.collectFirst {
       case st if List("cats",
-          "com.sap.marmolata.react.react",
+          "com.sap.marmolata.react",
           "reactive"
         ).forall(!st.getClassName.startsWith(_)) =>
         st.toString

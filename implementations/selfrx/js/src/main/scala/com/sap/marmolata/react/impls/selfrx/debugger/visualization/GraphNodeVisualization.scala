@@ -1,8 +1,9 @@
 package com.sap.marmolata.react.impls.selfrx.debugger.visualization
 
 import com.sap.marmolata.react.api.ReactiveLibrary
-import com.sap.marmolata.react.react.impls.selfrx.Primitive
-import com.sap.marmolata.react.react.impls.selfrx.debugger.JavaScriptFunctions.NodeProperties
+import com.sap.marmolata.react.api.ReactiveLibrary.Annotation
+import com.sap.marmolata.react.impls.selfrx.Primitive
+import com.sap.marmolata.react.impls.selfrx.debugger.JavaScriptFunctions.NodeProperties
 
 trait GraphNodeVisualizationAnnotation extends Annotation {
   def graphNode(p: Primitive, colors: Seq[String]): NodeProperties

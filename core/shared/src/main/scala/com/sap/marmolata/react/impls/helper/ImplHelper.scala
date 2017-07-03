@@ -1,8 +1,8 @@
 package com.sap.marmolata.react.impls.helper
 
-import cats.Monad
+import _root_.cats.Monad
 import com.sap.marmolata.react.api.ReactiveLibrary
-import com.sap.marmolata.react.react.core.ReactiveLibrary._
+import com.sap.marmolata.react.api.ReactiveLibrary._
 
 import scala.language.higherKinds
 

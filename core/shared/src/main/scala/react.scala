@@ -1,6 +1,5 @@
 import com.sap.marmolata.react.api.cats.FilterableSyntax
 import com.sap.marmolata.react.api.{ReactiveLibrary, ReactiveLibraryUsage}
-import com.sap.marmolata.react.react.core.{ReactiveLibrary, ReactiveLibraryUsage}
 
 /**
   *

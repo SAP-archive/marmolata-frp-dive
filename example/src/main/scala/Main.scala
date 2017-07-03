@@ -1,12 +1,14 @@
 import cats.Apply
 import com.sap.marmolata.react.api.ReactiveLibrary
+import com.sap.marmolata.react.api.ReactiveLibrary.Annotation
+import com.sap.marmolata.react.debug.{AnnotateStack, AnnotateStackAnnotation}
 import org.scalajs.dom
 import org.scalajs.dom.Element
-import com.sap.marmolata.react.react.debug.{AnnotateStack, AnnotateStackAnnotation}
-import com.sap.marmolata.react.react.impls.selfrx.debugger.{Debugger, DebuggerSelfRxImpl}
-import com.sap.marmolata.react.react.impls.selfrx.debugger.updatelogger.{HasHistoryLogger, LogSelfrxImpl, RecordingLogUpdates}
-import com.sap.marmolata.react.react.impls.selfrx.debugger.visualization.{NamedGraphNodeAnnotation, ReactiveDebugger, SourceMapConsumerForFile}
-import com.sap.marmolata.react.react.impls.selfrx.debugger.Debugger
+import com.sap.marmolata.react.debug.AnnotateStack
+import com.sap.marmolata.react.impls.selfrx.debugger.{Debugger, DebuggerSelfRxImpl}
+import com.sap.marmolata.react.impls.selfrx.debugger.updatelogger.{HasHistoryLogger, LogSelfrxImpl, RecordingLogUpdates}
+import com.sap.marmolata.react.impls.selfrx.debugger.visualization.{NamedGraphNodeAnnotation, ReactiveDebugger, SourceMapConsumerForFile}
+import com.sap.marmolata.react.impls.selfrx.debugger.Debugger
 
 import scala.scalajs.js.annotation.{JSExport, JSName}
 import reactive.library._
@@ -93,6 +95,6 @@ object Main {
     l3.value subscribe implicitly[Apply[Signal]].map4(l1.value, l2.value, e3.value, counter)((x, y, z, w) => s"$x $y $z $w")
 
     val layout = l1 above l2 above e3 above l3 above b above new ReactiveDebugger0()
-    layout.renderTopLevel("com.sap.marmolata.react.react")
+    layout.renderTopLevel("react")
   }
 }

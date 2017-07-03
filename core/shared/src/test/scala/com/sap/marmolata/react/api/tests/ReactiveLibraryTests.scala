@@ -5,8 +5,8 @@ import com.sap.marmolata.react.api.ReactiveDeclaration
 import com.sap.marmolata.react.api.ReactiveLibrary.{Cancelable, Observable}
 import org.scalacheck.{Arbitrary, Gen, Test}
 import org.scalatest._
-import com.sap.marmolata.react.react.core.ReactiveDeclaration
-import com.sap.marmolata.react.react.core.ReactiveLibrary.{Annotation, Cancelable, Observable}
+import com.sap.marmolata.react.api.ReactiveDeclaration
+import com.sap.marmolata.react.api.ReactiveLibrary.{Annotation, Cancelable, Observable}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
@@ -104,4 +104,4 @@ object TestConfiguration {
   def all: TestConfiguration = TestConfiguration(true, true)
 }
 
-object DeprecatedTest extends Tag("com.sap.marmolata.react.react.deprecated")
+object DeprecatedTest extends Tag("com.sap.marmolata.react.deprecated")

@@ -1,8 +1,8 @@
-package com.sap.marmolata.react.react.impls.selfrx.debugger
+package com.sap.marmolata.react.impls.selfrx.debugger
 
 import org.scalajs.dom
-import com.sap.marmolata.react.react.impls.selfrx.debugger.Debugger.{GraphNode, NodeDescription, PrimitiveGroup}
-import com.sap.marmolata.react.react.impls.selfrx.debugger.facades.vis
+import com.sap.marmolata.react.impls.selfrx.debugger.Debugger.{GraphNode, NodeDescription, PrimitiveGroup}
+import com.sap.marmolata.react.impls.selfrx.debugger.facades.vis
 
 import scala.collection.immutable.HashMap
 import scala.scalajs.js

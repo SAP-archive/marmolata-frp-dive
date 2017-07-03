@@ -1,4 +1,4 @@
-package com.sap.marmolata.react.react.impls.selfrx.debugger
+package com.sap.marmolata.react.impls.selfrx.debugger
 
 import scala.annotation.StaticAnnotation
 

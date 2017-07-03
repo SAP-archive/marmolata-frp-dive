@@ -1,10 +1,10 @@
 package com.sap.marmolata.react.api
 
-import cats._
-import cats.syntax.all._
-import cats.syntax.AllSyntax
+import _root_.cats._
+import _root_.cats.syntax.all._
+import _root_.cats.syntax.AllSyntax
+import com.sap.marmolata.react.api.cats.{Mergeable, FilterableSyntax}
 import com.sap.marmolata.react.api.ReactiveLibrary.{Cancelable, Observable}
-import com.sap.marmolata.react.react.core.ReactiveLibrary.{Cancelable, Observable}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try

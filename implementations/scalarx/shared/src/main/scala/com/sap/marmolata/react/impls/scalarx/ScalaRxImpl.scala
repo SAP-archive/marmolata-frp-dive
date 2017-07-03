@@ -2,8 +2,8 @@ package com.sap.marmolata.react.impls.scalarx
 
 import cats.{FlatMap, Monad}
 import com.sap.marmolata.react.api.ReactiveLibrary
-import com.sap.marmolata.react.react.core.ReactiveLibrary._
-import com.sap.marmolata.react.react.impls.helper.{NonCancelable, ReactiveLibraryImplementationHelper, _}
+import com.sap.marmolata.react.api.ReactiveLibrary._
+import com.sap.marmolata.react.impls.helper.{NonCancelable, ReactiveLibraryImplementationHelper, _}
 import rx._
 import rx.async.FutureCombinators
 

@@ -1,7 +1,8 @@
 package com.sap.marmolata.react.api
 
-import cats.{Mergeable, _}
-import com.sap.marmolata.react.react.cats.{Filterable, Mergeable}
+import _root_.cats._
+import cats.Mergeable
+import com.sap.marmolata.react.api.cats.{Filterable, Mergeable}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
