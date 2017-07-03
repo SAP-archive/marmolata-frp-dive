@@ -66,14 +66,14 @@ object ReactiveLibrary {
       * When used on a a signal, the function f is triggered whenever the signal changes its value incuding once
       * when observe is called. f is only ever called when the value changes afterwards.
       *
-      * If the method shouldn't be called directly, but only when it first changes its value, use [[ReactiveLibraryUsage#SignalExtensions#]]
+      * If the method shouldn't be called directly, but only when it first changes its value, use [[com.sap.marmolata.react.api.ReactiveLibraryUsage#SignalExtensions#]]
       *
       * == Usage as Event ==
       * When used on an event, observe is called each time the event triggers. Thus it's not called directly after observe is called.
       * Also, differently form the Signal case, it can be called with the same value twice in succession.
       *
       * == Additional information ==
-      * Besides future compositon methods like [[ReactiveLibraryUsage#FutureExtensions2#executeFuture]] this is
+      * Besides future compositon methods like [[com.sap.marmolata.react.api.ReactiveLibraryUsage#FutureExtensions2#executeFuture]] this is
       * the most important method to create side effects. It's especially not allowed to use Functor#map
       * to do side effects. Instead, use this method
       *

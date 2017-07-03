@@ -1,4 +1,4 @@
-package react.cats
+package com.sap.marmolata.react.cats
 
 import cats.Functor
 

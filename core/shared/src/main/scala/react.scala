@@ -1,3 +1,5 @@
+package com.sap.marmolata.react
+
 import com.sap.marmolata.react.api.cats.FilterableSyntax
 import com.sap.marmolata.react.api.{ReactiveLibrary, ReactiveLibraryUsage}
 
@@ -14,16 +16,16 @@ import com.sap.marmolata.react.api.{ReactiveLibrary, ReactiveLibraryUsage}
   *   import com.sap.marmolata.react.library.syntax._
   * }}}
   *
-  * The central concepts of this library are [[ReactiveLibrary#Signal Signal]] and [[ReactiveLibrary#Event Event]]
+  * The central concepts of this library are [[com.sap.marmolata.react.api.ReactiveLibrary#Signal Signal]] and [[com.sap.marmolata.react.api.ReactiveLibrary#Event Event]]
   *
   * === Signal ===
   * A signal is a time-varying value, i.e. for every point in time, a Signal[A] has a value of type A.
   * Signals can represent any kind of values and can be composed. In the context of marmolata,
   * a Signal may represent e.g. the current value of an input field or the currently displayed sql query in a table.
   *
-  * Signals can be created with the [[ReactiveLibrary#Var Var]] and [[ReactiveLibrary.SignalCompanionObject#Const Signal.Const]] constructors.
+  * Signals can be created with the [[com.sap.marmolata.react.api.ReactiveLibrary#Var Var]] and [[com.sap.marmolata.react.api.ReactiveLibrary.SignalCompanionObject#Const Signal.Const]] constructors.
   * Var creates a reactive variable
-  * that can be changed by the [[ReactiveLibrary.VarTrait#:= :=]] function, while Const creates a Signal that's never changed.
+  * that can be changed by the [[com.sap.marmolata.react.api.ReactiveLibrary.VarTrait#:= :=]] function, while Const creates a Signal that's never changed.
   *
   * === Example ===
   *
@@ -42,13 +44,13 @@ import com.sap.marmolata.react.api.{ReactiveLibrary, ReactiveLibraryUsage}
   *   > new value of var1: 15
   * }}}
   *
-  * As you can see here, [[ReactiveLibrary.Observable#observe observe]] can be used to do side effects whenever the value of a signal changes.
+  * As you can see here, [[com.sap.marmolata.react.api.ReactiveLibrary.Observable#observe observe]] can be used to do side effects whenever the value of a signal changes.
   * Note, that it should be avoid to use observe and instead build new Signals and Events out of older ones via methods like
   * [[http://typelevel.org/cats/api/index.html#cats.Functor$$Ops@map[B](f:A=>B):F[B] map]],
   * [[http://typelevel.org/cats/api/index.html#cats.Cartesian$$Ops@product[B](fb:F[B]):F[(A,B)] product]],
   * [[http://typelevel.org/cats/api/index.html#cats.Cartesian$$Ops@product[B](fb:F[B]):F[(A,B)] map2]],
-  * [[ReactiveLibraryUsage#SignalExtensions#triggerWhen[B](e:ReactiveLibraryUsage\.this\.Event[B]):ReactiveLibraryUsage\.this\.Event[A]* triggerWhen]],
-  * [[ReactiveLibraryUsage#SignalExtensions#changeWhen changeWhen]]
+  * [[com.sap.marmolata.react.api.ReactiveLibraryUsage#SignalExtensions#triggerWhen[B](e:ReactiveLibraryUsage\.this\.Event[B]):ReactiveLibraryUsage\.this\.Event[A]* triggerWhen]],
+  * [[com.sap.marmolata.react.api.ReactiveLibraryUsage#SignalExtensions#changeWhen changeWhen]]
   * and give these Signals back to the Marmolata platform.
   *
   * {{{
@@ -99,17 +101,17 @@ import com.sap.marmolata.react.api.{ReactiveLibrary, ReactiveLibraryUsage}
   * Note, that v, w, z and r get updated atomically. So, there's no intermediate state when w is already updated but z isn't yet updated.
   *
   * === Events ===
-  * [[ReactiveLibrary#Event Event[A] ]] represent the entirety of specific points in time when some event happens.
+  * [[com.sap.marmolata.react.api.ReactiveLibrary#Event Event[A] ]] represent the entirety of specific points in time when some event happens.
   * This could e.g. be the event representing Button clicks or the event representing tablre reloads. An event can have associated data, e.g.
   * the mouse position of a Button click or the associated data of a table reload. But often, scala.Unit is used.
   *
-  * Events can be created with the [[ReactiveLibrary.EventSourceCompanionObject#apply EventSource constructor]] or created from other events by methods like
-  * [[FilterableSyntax.MergeableObs#merge merge]], [[FilterableSyntax.FilterableObs#filter filter]],
+  * Events can be created with the [[com.sap.marmolata.react.api.ReactiveLibrary.EventSourceCompanionObject#apply EventSource constructor]] or created from other events by methods like
+  * [[com.sap.marmolata.react.api.cats.FilterableSyntax.MergeableObs#merge merge]], [[com.sap.marmolata.react.api.cats.FilterableSyntax.FilterableObs#filter filter]],
   * [[http://typelevel.org/cats/api/index.html#cats.Functor$$Ops@map[B](f:A=>B):F[B] map]],
-  * [[FilterableSyntax.FilterableObs#mapPartial mapPartial]],
-  * [[ReactiveLibraryUsage#SignalExtensions#toEvent toEvent]],
-  * [[ReactiveLibraryUsage#SignalExtensions#triggerWhen[B](e:ReactiveLibraryUsage\.this\.Event[B]):ReactiveLibraryUsage\.this\.Event[A]* triggerWhen]],
-  * [[ReactiveLibraryUsage#EventExtensions#mergeEither mergeEither]].
+  * [[com.sap.marmolata.react.api.cats.FilterableSyntax.FilterableObs#mapPartial mapPartial]],
+  * [[com.sap.marmolata.react.api.ReactiveLibraryUsage#SignalExtensions#toEvent toEvent]],
+  * [[com.sap.marmolata.react.api.ReactiveLibraryUsage#SignalExtensions#triggerWhen[B](e:ReactiveLibraryUsage\.this\.Event[B]):ReactiveLibraryUsage\.this\.Event[A]* triggerWhen]],
+  * [[com.sap.marmolata.react.api.ReactiveLibraryUsage#EventExtensions#mergeEither mergeEither]].
   *
   * === Example ===
   *
@@ -148,4 +150,4 @@ import com.sap.marmolata.react.api.{ReactiveLibrary, ReactiveLibraryUsage}
   * }}}
   *
   */
-package object react {}
+package object api {}
