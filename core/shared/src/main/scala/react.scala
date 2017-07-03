@@ -10,8 +10,8 @@ import com.sap.marmolata.react.api.{ReactiveLibrary, ReactiveLibraryUsage}
   * To use this library, include the following import statements in any file:
   *
   * {{{
-  *   import reactive.library._
-  *   import reactive.library.syntax._
+  *   import com.sap.marmolata.react.library._
+  *   import com.sap.marmolata.react.library.syntax._
   * }}}
   *
   * The central concepts of this library are [[ReactiveLibrary#Signal Signal]] and [[ReactiveLibrary#Event Event]]
@@ -28,8 +28,8 @@ import com.sap.marmolata.react.api.{ReactiveLibrary, ReactiveLibraryUsage}
   * === Example ===
   *
   * {{{
-  *   import reactive.library._
-  *   import reactive.library.syntax._
+  *   import com.sap.marmolata.react.library._
+  *   import com.sap.marmolata.react.library.syntax._
   *
   *   val var1 = Var(5)
   *   var1.observe(x => println(s"new value of var1: x"))
@@ -52,8 +52,8 @@ import com.sap.marmolata.react.api.{ReactiveLibrary, ReactiveLibraryUsage}
   * and give these Signals back to the Marmolata platform.
   *
   * {{{
-  *   import reactive.library._
-  *   import reactive.library.signal._
+  *   import com.sap.marmolata.react.library._
+  *   import com.sap.marmolata.react.library.signal._
   *
   *   val v1 = Var(5)
   *   val v2 = Var(7)
@@ -80,8 +80,8 @@ import com.sap.marmolata.react.api.{ReactiveLibrary, ReactiveLibraryUsage}
   * By using these primitives, it's ensured that Signals don't get updated to intermediate values. Consider the following example:
   *
   * {{{
-  *   import reactive.library._
-  *   import reactive.library.signal._
+  *   import com.sap.marmolata.react.library._
+  *   import com.sap.marmolata.react.library.signal._
   *
   *   val v = Var(0)
   *   val w = v.map(_ + 3)
@@ -114,8 +114,8 @@ import com.sap.marmolata.react.api.{ReactiveLibrary, ReactiveLibraryUsage}
   * === Example ===
   *
   * {{{
-  *   import reactive.library._
-  *   import reactive.library.syntax._
+  *   import com.sap.marmolata.react.library._
+  *   import com.sap.marmolata.react.library.syntax._
   *
   *   val e = EventSource[Int]
   *   val f = EventSource[Int]

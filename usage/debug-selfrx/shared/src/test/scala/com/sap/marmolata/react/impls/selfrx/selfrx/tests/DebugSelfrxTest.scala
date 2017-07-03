@@ -6,5 +6,5 @@ import org.scalatest.{FlatSpec, Matchers}
 import com.sap.marmolata.react.api.ReactiveDeclaration
 
 class DebugSelfrxTest extends FlatSpec with DefaultTests {
-  override def reactiveLibrary_ : ReactiveDeclaration = reactive.library
+  override def reactiveLibrary_ : ReactiveDeclaration = com.sap.marmolata.react.library
 }

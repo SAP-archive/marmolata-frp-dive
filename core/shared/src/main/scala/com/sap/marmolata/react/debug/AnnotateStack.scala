@@ -12,7 +12,7 @@ trait AnnotateStackAnnotation extends Annotation
 trait AnnotateStack extends DebugLayer with EnsureLargeEnoughStackTrace {
   def checkStackframe(s: StackTraceElement): Boolean = true
 
-  def filterPackages = List("cats", "react", "reactive", "java", "scala", "<jscode>")
+  def filterPackages = List("cats", "com.sap.marmolata.react", "java", "scala", "<jscode>")
 
 
   //TODO use js WeakMap

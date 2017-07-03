@@ -8,8 +8,7 @@ class AnnotateStack(underlying: com.sap.marmolata.react.api.ReactiveLibrary) ext
     val currentStackTrace = new RuntimeException().getStackTrace
     val stackframe = currentStackTrace.collectFirst {
       case st if List("cats",
-          "com.sap.marmolata.react",
-          "reactive"
+          "com.sap.marmolata.react"
         ).forall(!st.getClassName.startsWith(_)) =>
         st.toString
     }.getOrElse("empty stack trace - your browser may not be supported")
