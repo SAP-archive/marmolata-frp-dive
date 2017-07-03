@@ -19,12 +19,28 @@ trait ReactiveLibraryUsage extends ReactiveLibraryUsageTime {
   self: ReactiveLibrary =>
 
   implicit final class FutureExtensions[A](f: Future[A]) {
-    @deprecated("use [[FutureExtensions2#executeFuture]] instead", "0.33")
+    /**
+      * convert a future to an event.
+      * If you happen to have a `Event[Future[T] ]`, [[FutureExtensions2#executeFuture]] may be more suitable,
+      * as it takes care of only triggering the latest events
+      * @param ec executionContext
+      * @return an event that triggers once when the future succeeds. If it already succeeded, no event will be triggered
+      */
     def toEvent(implicit ec: ExecutionContext): Event[A] = futureToEvent(f)
+
+    /**
+      * convert this Future to a Signal
+      *
+      *
+      * @param initialValue the value of the signal until the future is completed
+      * @return a Signal which changes its value once when the future is completed from `initialValue` to the value of the future
+      *         If the future is already completed, a constant signal with the value of the completed future
+      */
+    def toSignal[B >: A](initialValue: B)(implicit ec: ExecutionContext): Signal[B] = Signal.Const(f).executeFuture(initialValue)
   }
 
   implicit final class FutureExtensions2[A](s: Observable[Future[A]]) {
-    def executeFuture(defaultVal: A)(implicit ec: ExecutionContext): Signal[A] = {
+    def executeFuture[B >: A](defaultVal: B)(implicit ec: ExecutionContext): Signal[B] = {
       val result = Var(defaultVal)
       var currentId = 0
       var lastId = 0
