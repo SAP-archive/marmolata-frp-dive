@@ -1,18 +1,18 @@
 import cats.Apply
+import com.sap.marmolata.react.api.ReactiveLibrary
+import com.sap.marmolata.react.api.ReactiveLibrary.Annotation
+import com.sap.marmolata.react.debug.{AnnotateStack, AnnotateStackAnnotation}
 import org.scalajs.dom
 import org.scalajs.dom.Element
-import react.core.ReactiveLibrary
-import ReactiveLibrary.Annotation
-import react.debug.{AnnotateStackAnnotation, AnnotateStack}
-import react.impls.selfrx.debugger.{Debugger, DebuggerSelfRxImpl}
-import react.impls.selfrx.debugger.updatelogger.{HasHistoryLogger, RecordingLogUpdates, LogSelfrxImpl}
-import react.impls.selfrx.debugger.visualization.{NamedGraphNodeAnnotation, SourceMapConsumerForFile, ReactiveDebugger}
-import react.impls.selfrx.debugger.Debugger
+import com.sap.marmolata.react.debug.AnnotateStack
+import com.sap.marmolata.react.impls.selfrx.debugger.{Debugger, DebuggerSelfRxImpl}
+import com.sap.marmolata.react.impls.selfrx.debugger.updatelogger.{HasHistoryLogger, LogSelfrxImpl, RecordingLogUpdates}
+import com.sap.marmolata.react.impls.selfrx.debugger.visualization.{NamedGraphNodeAnnotation, ReactiveDebugger, SourceMapConsumerForFile}
+import com.sap.marmolata.react.impls.selfrx.debugger.Debugger
 
-import scala.scalajs.js.annotation.{JSName, JSExport}
-
-import reactive.library._
-import reactive.library.syntax._
+import scala.scalajs.js.annotation.{JSExport, JSName}
+import com.sap.marmolata.react.library._
+import com.sap.marmolata.react.library.syntax._
 
 trait Renderable {
   val domNode: dom.Element
@@ -60,9 +60,9 @@ case class Button() extends Renderable {
 }
 
 class ReactiveDebugger0 extends Renderable {
-  private val debugger: Debugger = reactive.library.asInstanceOf[DebuggerSelfRxImpl].debugger
-  private val stackTrace: AnnotateStack = reactive.library.asInstanceOf[AnnotateStack]
-  private val historyLogger: RecordingLogUpdates = reactive.library.asInstanceOf[HasHistoryLogger].historyLogger
+  private val debugger: Debugger = com.sap.marmolata.react.library.asInstanceOf[DebuggerSelfRxImpl].debugger
+  private val stackTrace: AnnotateStack = com.sap.marmolata.react.library.asInstanceOf[AnnotateStack]
+  private val historyLogger: RecordingLogUpdates = com.sap.marmolata.react.library.asInstanceOf[HasHistoryLogger].historyLogger
 
   val reactiveDebugger: ReactiveDebugger =
     new ReactiveDebugger(debugger, stackTrace, new SourceMapConsumerForFile("target/scala-2.11/reactive-example-fastopt.js.map"), historyLogger)

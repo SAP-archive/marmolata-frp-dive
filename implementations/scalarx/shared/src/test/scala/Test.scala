@@ -1,6 +1,6 @@
+import com.sap.marmolata.react.api.tests.DefaultTests
 import org.scalatest.FlatSpec
-import react.core.tests.DefaultTests
 
 class ScalaRxTest extends DefaultTests {
-   def reactiveLibrary_ = reactive.library
+   def reactiveLibrary_ = com.sap.marmolata.react.library
 }

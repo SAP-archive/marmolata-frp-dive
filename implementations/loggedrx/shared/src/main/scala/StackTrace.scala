@@ -1,16 +1,14 @@
-package react.logged
+package com.sap.marmolata.react.logged
 
-import react.core.ReactiveLibrary.Nameable
-import react.debug.{HasUnderlying, DebugLayer}
+import com.sap.marmolata.react.api.ReactiveLibrary.Nameable
 
-class AnnotateStack(underlying: react.ReactiveLibrary) extends DebugLayer(underlying) {
+class AnnotateStack(underlying: com.sap.marmolata.react.api.ReactiveLibrary) extends DebugLayer(underlying) {
   override def onNew(u: HasUnderlying[Nameable]): Unit = {
     super.onNew(u)
     val currentStackTrace = new RuntimeException().getStackTrace
     val stackframe = currentStackTrace.collectFirst {
       case st if List("cats",
-          "react",
-          "reactive"
+          "com.sap.marmolata.react"
         ).forall(!st.getClassName.startsWith(_)) =>
         st.toString
     }.getOrElse("empty stack trace - your browser may not be supported")
